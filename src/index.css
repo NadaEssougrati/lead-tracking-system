@@ -1,0 +1,240 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Space Grotesk", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  /* Rosé Pine Palette Mapping */
+  --color-drac-bg: var(--bg-app);
+  --color-drac-sub: var(--bg-sub);
+  --color-drac-card: var(--bg-card);
+  --color-drac-select: var(--bg-select);
+  --color-drac-fg: var(--text-fg);
+  --color-drac-comment: var(--text-muted);
+
+  --color-dracl-bg: var(--bg-app);
+  --color-dracl-sub: var(--bg-sub);
+  --color-dracl-card: var(--bg-card);
+  --color-dracl-select: var(--bg-select);
+  --color-dracl-fg: var(--text-fg);
+  --color-dracl-muted: var(--text-muted);
+
+  /* Rosé Pine Accents */
+  --color-rosepine-rose: var(--rose-accent);
+  --color-rosepine-pine: var(--pine-accent);
+  --color-rosepine-iris: var(--iris-accent);
+  --color-rosepine-love: var(--love-accent);
+  --color-rosepine-gold: var(--gold-accent);
+
+  /* Mapping for standard components */
+  --color-drac-cyan: var(--pine-accent);
+  --color-drac-green: var(--pine-accent);
+  --color-drac-orange: var(--gold-accent);
+  --color-drac-pink: var(--rose-accent);
+  --color-drac-purple: var(--iris-accent);
+  --color-drac-red: var(--love-accent);
+  --color-drac-yellow: var(--gold-accent);
+
+  /* Override generic tailwind colors to automatically apply Rosé Pine globally */
+  --color-white: var(--bg-card);
+  --color-neutral-50: var(--bg-sub);
+  --color-neutral-100: var(--bg-sub);
+  --color-neutral-200: var(--border-theme);
+  --color-neutral-300: var(--border-theme);
+  --color-neutral-450: var(--text-muted);
+  --color-neutral-400: var(--text-muted);
+  --color-neutral-500: var(--text-muted);
+  --color-neutral-600: var(--text-muted);
+  --color-neutral-700: var(--text-fg);
+  --color-neutral-800: var(--bg-sub);
+  --color-neutral-900: var(--text-fg);
+  --color-neutral-950: var(--text-fg);
+}
+
+:root {
+  color-scheme: light;
+  --bg-app: #faf4ed; /* Rose Pine Dawn Base */
+  --bg-sub: #f2e9e1; /* Rose Pine Dawn Overlay */
+  --bg-card: #fffaf3; /* Rose Pine Dawn Surface */
+  --bg-select: #dfdad9; /* Rose Pine Dawn Highlight Med */
+  --text-fg: #575279; /* Rose Pine Dawn Text */
+  --text-muted: #797593; /* Rose Pine Dawn Muted */
+  --border-theme: rgba(87, 82, 121, 0.15);
+
+  /* Light Accent Hexes */
+  --rose-accent: #d7827e;
+  --pine-accent: #286983;
+  --iris-accent: #907aa9;
+  --love-accent: #b4637a;
+  --gold-accent: #ea9d34;
+}
+
+.dark {
+  color-scheme: dark;
+  --bg-app: #191724; /* Rose Pine Dark Base */
+  --bg-sub: #1f1d2e; /* Rose Pine Dark Surface */
+  --bg-card: #26233a; /* Rose Pine Dark Overlay */
+  --bg-select: #403d52; /* Rose Pine Dark Highlight Med */
+  --text-fg: #e0def4; /* Rose Pine Dark Text */
+  --text-muted: #908caa; /* Rose Pine Dark Muted */
+  --border-theme: rgba(224, 222, 244, 0.12);
+
+  /* Dark Accent Hexes */
+  --rose-accent: #ebbcba;
+  --pine-accent: #31748f;
+  --iris-accent: #c4a7e7;
+  --love-accent: #eb6f92;
+  --gold-accent: #f6c177;
+}
+
+html, body {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: var(--bg-app) !important;
+  color: var(--text-fg) !important;
+}
+
+/* Custom scrollbars to match the high-density professional aesthetic */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(120, 120, 120, 0.2);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(120, 120, 120, 0.4);
+}
+
+/* Custom visual utilities to provide clean borders and panels */
+.blunt-card {
+  @apply bg-dracl-card dark:bg-drac-card border border-neutral-200/60 dark:border-neutral-800/40 transition-all duration-150 text-dracl-fg dark:text-drac-fg rounded-xl shadow-[0_4px_25px_rgba(0,0,0,0.025)];
+}
+
+.blunt-card-header {
+  @apply border-b border-neutral-200/60 dark:border-neutral-800/40 pb-4 mb-4 flex flex-wrap items-center justify-between gap-3;
+}
+
+.blunt-card-body {
+  @apply space-y-4;
+}
+
+.blunt-page {
+  @apply flex-1 flex flex-col p-4 md:p-6 overflow-y-auto space-y-6 max-w-7xl w-full mx-auto;
+}
+
+.blunt-button {
+  @apply inline-flex items-center justify-center font-semibold transition-all duration-150 border disabled:opacity-50 disabled:pointer-events-none rounded-lg;
+}
+
+.blunt-button-primary {
+  @apply inline-flex items-center justify-center font-bold tracking-tight transition-all duration-150 border disabled:opacity-50 disabled:pointer-events-none bg-rosepine-iris text-white border-rosepine-iris hover:brightness-105 active:brightness-95 px-4 py-2 text-xs rounded-lg;
+}
+
+.blunt-button-secondary {
+  @apply inline-flex items-center justify-center font-bold tracking-tight transition-all duration-150 border disabled:opacity-50 disabled:pointer-events-none bg-dracl-card text-dracl-fg border-neutral-200/85 dark:border-neutral-800/40 hover:bg-dracl-sub dark:bg-drac-sub dark:text-drac-fg dark:hover:bg-drac-select px-4 py-2 text-xs rounded-lg;
+}
+
+.blunt-button-danger {
+  @apply inline-flex items-center justify-center font-bold tracking-tight transition-all duration-150 border disabled:opacity-50 disabled:pointer-events-none bg-rosepine-love/10 text-rosepine-love border-rosepine-love/20 hover:bg-rosepine-love/20 px-4 py-2 text-xs rounded-lg;
+}
+
+.blunt-input {
+  @apply w-full bg-dracl-card dark:bg-drac-sub border border-neutral-200/85 dark:border-neutral-800/40 px-3 py-2 text-xs focus:outline-none focus:border-rosepine-iris dark:focus:border-rosepine-iris focus:ring-1 focus:ring-rosepine-iris dark:focus:ring-rosepine-iris rounded-lg transition-colors duration-150 placeholder-dracl-muted/50 dark:placeholder-drac-comment/60 text-dracl-fg dark:text-drac-fg;
+}
+
+.blunt-textarea {
+  @apply w-full bg-dracl-card dark:bg-drac-sub border border-neutral-200/85 dark:border-neutral-800/40 px-3 py-2 text-xs focus:outline-none focus:border-rosepine-iris dark:focus:border-rosepine-iris focus:ring-1 focus:ring-rosepine-iris dark:focus:ring-rosepine-iris rounded-lg transition-colors duration-150 placeholder-dracl-muted/50 dark:placeholder-drac-comment/60 text-dracl-fg dark:text-drac-fg min-h-[80px] resize-y;
+}
+
+.blunt-select {
+  @apply w-full bg-dracl-card dark:bg-drac-sub border border-neutral-200/85 dark:border-neutral-800/40 px-3 py-2 text-xs focus:outline-none focus:border-rosepine-iris dark:focus:border-rosepine-iris rounded-lg transition-colors duration-150 text-dracl-fg dark:text-drac-fg cursor-pointer appearance-none;
+}
+
+.blunt-label {
+  @apply block text-xs font-bold uppercase tracking-wider text-dracl-muted dark:text-drac-comment mb-1.5 font-mono;
+}
+
+/* Typography styles */
+.blunt-heading-1 {
+  @apply text-xl md:text-2xl font-display font-black uppercase tracking-tight text-dracl-fg dark:text-white flex items-center gap-2;
+}
+
+.blunt-heading-2 {
+  @apply text-sm md:text-base font-display font-bold uppercase tracking-tight text-dracl-fg dark:text-white flex items-center gap-2;
+}
+
+.blunt-heading-3 {
+  @apply text-xs md:text-sm font-display font-bold uppercase tracking-tight text-dracl-fg dark:text-white;
+}
+
+.blunt-mono-label {
+  @apply text-[10px] font-mono uppercase font-bold tracking-widest text-dracl-muted dark:text-drac-comment;
+}
+
+/* Status Badge System */
+.blunt-badge {
+  @apply inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase tracking-wider border;
+}
+
+.blunt-badge-success {
+  @apply inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase tracking-wider border bg-rosepine-pine/10 text-rosepine-pine border-rosepine-pine/20;
+}
+
+.blunt-badge-danger {
+  @apply inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase tracking-wider border bg-rosepine-love/10 text-rosepine-love border-rosepine-love/20;
+}
+
+.blunt-badge-warning {
+  @apply inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase tracking-wider border bg-rosepine-gold/10 text-rosepine-gold border-rosepine-gold/20;
+}
+
+.blunt-badge-info {
+  @apply inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase tracking-wider border bg-rosepine-iris/10 text-rosepine-iris border-rosepine-iris/20;
+}
+
+.blunt-badge-muted {
+  @apply inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase tracking-wider border bg-neutral-100 dark:bg-neutral-800 text-dracl-muted dark:text-drac-comment border-neutral-200/40 dark:border-neutral-800/40;
+}
+
+/* Modern Data Table System */
+.blunt-table-container {
+  @apply overflow-x-auto rounded-xl border border-neutral-200/60 dark:border-neutral-800/40 bg-dracl-card dark:bg-drac-card;
+}
+
+.blunt-table {
+  @apply w-full text-left border-collapse font-mono text-xs;
+}
+
+.blunt-table-thead {
+  @apply bg-dracl-sub dark:bg-drac-sub text-dracl-muted dark:text-drac-comment text-[10px] uppercase border-b border-neutral-200/60 dark:border-neutral-800/40;
+}
+
+.blunt-th {
+  @apply p-3 font-bold tracking-wider;
+}
+
+.blunt-table-tbody {
+  @apply divide-y divide-neutral-200/60 dark:divide-neutral-800/40 text-dracl-fg dark:text-drac-fg;
+}
+
+.blunt-tr {
+  @apply hover:bg-neutral-50/50 dark:hover:bg-neutral-800/10 transition-colors;
+}
+
+.blunt-td {
+  @apply p-3 align-middle;
+}
+
