@@ -238,3 +238,23 @@ html, body {
   @apply p-3 align-middle;
 }
 
+/* Animated Wavy Notebook Dotted Grid Background */
+.wavy-dots-bg {
+  position: relative;
+}
+
+.animate-dot-wave {
+  animation: dot-wave-keyframes 4.5s infinite ease-in-out;
+}
+
+@keyframes dot-wave-keyframes {
+  0%, 100% {
+    transform: scale(0.85);
+    opacity: 0.18;
+  }
+  50% {
+    transform: scale(2.8);
+    opacity: 0.8;
+  }
+}
+

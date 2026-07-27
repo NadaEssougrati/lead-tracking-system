@@ -125,6 +125,24 @@ export const AdminUserForms: React.FC<AdminUserFormsProps> = ({
               )}
             </div>
 
+            <div>
+              <label className="text-[10px] font-bold uppercase text-dracl-muted dark:text-drac-comment mb-1.5 tracking-wider block">
+                NOUVEAU MOT DE PASSE (FACULTATIF)
+              </label>
+              <input
+                type="password"
+                placeholder="Laisser vide pour ne pas modifier"
+                value={editUserForm.password || ""}
+                onChange={(e) => onEditUserFormChange({ password: e.target.value })}
+                className="blunt-input"
+              />
+              {editUserErrors.password && (
+                <span className="text-[9px] text-rosepine-love font-semibold block mt-1">
+                  ▲ {editUserErrors.password}
+                </span>
+              )}
+            </div>
+
             <button
               type="submit"
               className="w-full blunt-button blunt-button-primary py-2 text-xs font-bold uppercase tracking-wider"

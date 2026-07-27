@@ -3,58 +3,54 @@ import path from "path";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { createServer as createViteServer } from "vite";
-import { db } from "./src/db/index.ts";
+import { db, pool } from "./src/db/index.ts";
 import { users, activityLogs } from "./src/db/schema.ts";
 import { eq, desc, count, and } from "drizzle-orm";
 import * as dotenv from "dotenv";
+import { leadRouter } from "./src/routes/leadRoutes.ts";
+import { entrepriseRouter } from "./src/routes/entrepriseRoutes.ts";
+import { tacheRouter } from "./src/routes/tacheRoutes.ts";
+import { devisRouter } from "./src/routes/devisRoutes.ts";
+import { notificationRouter } from "./src/routes/notificationRoutes.ts";
+import { kpiRouter } from "./src/routes/kpiRoutes.ts";
 
 dotenv.config();
 
 const app = express();
-const PORT = 3000;
+const PORT = Number(process.env.PORT) || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || "brutalist-secure-jwt-key-2026";
 
 app.use(express.json());
 
-// Seeding Helper
+// Role translation helpers between Database (French) and Frontend (English)
+function mapRoleToFrontend(role: string): string {
+  if (role === "Administrateur") return "admin";
+  if (role === "Manager") return "manager";
+  if (role === "Commercial") return "commercial";
+  if (role === "AgentMarketing") return "marketing";
+  return "user";
+}
+
+function mapRoleToBackend(role: string): string {
+  if (role === "admin") return "Administrateur";
+  if (role === "manager") return "Manager";
+  if (role === "commercial") return "Commercial";
+  if (role === "marketing") return "AgentMarketing";
+  return "Commercial";
+}
+
+// Seeding Helper - updated for CRM
 async function seedDatabase() {
   try {
-    const userCountResult = await db.select({ val: count() }).from(users);
-    const userCount = userCountResult[0]?.val ?? 0;
-    if (userCount === 0) {
-      console.log("No users found in database. Seeding initial test accounts...");
-      const salt = await bcrypt.genSalt(10);
-      
-      const adminHash = await bcrypt.hash("admin123", salt);
-      const managerHash = await bcrypt.hash("manager123", salt);
-      const commercialHash = await bcrypt.hash("commercial123", salt);
-      const marketingHash = await bcrypt.hash("marketing123", salt);
-      const userHash = await bcrypt.hash("user123", salt);
-
-      const insertedUsers = await db.insert(users).values([
-        { username: "admin", email: "admin@example.com", password: adminHash, role: "admin", status: "active" },
-        { username: "manager", email: "manager@example.com", password: managerHash, role: "manager", status: "active" },
-        { username: "commercial", email: "commercial@example.com", password: commercialHash, role: "commercial", status: "active" },
-        { username: "marketing", email: "marketing@example.com", password: marketingHash, role: "marketing", status: "active" },
-        { username: "user", email: "user@example.com", password: userHash, role: "user", status: "active" },
-      ]).returning();
-
-      // Log creation
-      for (const u of insertedUsers) {
-        await db.insert(activityLogs).values({
-          userId: u.id,
-          username: u.username,
-          action: "REGISTER",
-          details: `System auto-seeded account with role: ${u.role}`,
-          ipAddress: "127.0.0.1"
-        });
-      }
-      console.log("Database seeded successfully!");
+    const res = await pool.query("SELECT COUNT(*) FROM utilisateur");
+    const countVal = parseInt(res.rows[0].count);
+    if (countVal === 0) {
+      console.log("No CRM users found in 'utilisateur' table. Please run 'node seed.js' to seed the database.");
     } else {
-      console.log(`Database has ${userCount} users. Skipping seeding.`);
+      console.log(`Database has ${countVal} CRM users in 'utilisateur'.`);
     }
   } catch (error) {
-    console.error("Failed to seed database:", error);
+    console.error("Failed to check CRM database: make sure you run 'node seed.js' to create tables and seed data.", error);
   }
 }
 
@@ -80,24 +76,27 @@ const authenticateToken = async (req: CustomRequest, res: express.Response, next
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as { id: number; username: string };
     
-    // Fetch latest user info from DB to check for status and role changes
-    const userList = await db.select().from(users).where(eq(users.id, decoded.id)).limit(1);
-    const user = userList[0];
+    // Fetch latest user info from CRM utilisateur table
+    const userListRes = await pool.query(
+      "SELECT id, nom, prenom, email, role, actif FROM utilisateur WHERE id = $1 LIMIT 1",
+      [decoded.id]
+    );
+    const user = userListRes.rows[0];
 
     if (!user) {
       return res.status(401).json({ error: "User no longer exists." });
     }
 
-    if (user.status === "disabled") {
+    if (!user.actif) {
       return res.status(403).json({ error: "Account is disabled. Please contact an administrator." });
     }
 
     req.user = {
       id: user.id,
-      username: user.username,
+      username: `${user.prenom} ${user.nom}`,
       email: user.email,
       role: user.role,
-      status: user.status,
+      status: user.actif ? "active" : "disabled",
     };
     next();
   } catch (err) {
@@ -106,7 +105,7 @@ const authenticateToken = async (req: CustomRequest, res: express.Response, next
 };
 
 const requireAdmin = (req: CustomRequest, res: express.Response, next: express.NextFunction) => {
-  if (!req.user || req.user.role !== "admin") {
+  if (!req.user || req.user.role !== "Administrateur") {
     return res.status(403).json({ error: "Unauthorized. Admin privileges required." });
   }
   next();
@@ -120,44 +119,35 @@ app.post("/api/auth/login", async (req, res) => {
   const ip = req.ip || "127.0.0.1";
 
   if (!username || !password) {
-    return res.status(400).json({ error: "Username and password are required." });
+    return res.status(400).json({ error: "Nom d'utilisateur et mot de passe requis." });
   }
 
-  try {
-    // Find user by username or email
-    const userList = await db
-      .select()
-      .from(users)
-      .where(and(eq(users.username, username)))
-      .limit(1);
-    
-    let user = userList[0];
+  // Trim and lowercase username input to handle trailing spaces or casing differences
+  const cleanUsername = String(username || "").trim().toLowerCase();
 
-    // Try finding by email if username doesn't match
-    if (!user) {
-      const emailList = await db
-        .select()
-        .from(users)
-        .where(eq(users.email, username))
-        .limit(1);
-      user = emailList[0];
-    }
+  try {
+    // Find user by email or username prefix in utilisateur table (case-insensitive)
+    const userListRes = await pool.query(
+      "SELECT * FROM utilisateur WHERE LOWER(email) = $1 OR LOWER(email) LIKE $1 || '@%' LIMIT 1",
+      [cleanUsername]
+    );
+    let user = userListRes.rows[0];
 
     if (!user) {
       return res.status(401).json({ error: "Invalid credentials." });
     }
 
-    if (user.status === "disabled") {
+    if (!user.actif) {
       return res.status(403).json({ error: "Account is disabled. Please contact an administrator." });
     }
 
     // Verify Password
-    const isPasswordValid = await bcrypt.compare(password, user.password);
+    const isPasswordValid = await bcrypt.compare(password, user.mot_de_passe);
     if (!isPasswordValid) {
       // Log failed login attempt
       await db.insert(activityLogs).values({
         userId: user.id,
-        username: user.username,
+        username: `${user.prenom} ${user.nom}`,
         action: "FAILED_LOGIN",
         details: "Failed login attempt: Invalid password.",
         ipAddress: ip,
@@ -167,7 +157,7 @@ app.post("/api/auth/login", async (req, res) => {
 
     // Generate JWT Token
     const token = jwt.sign(
-      { id: user.id, username: user.username },
+      { id: user.id, username: `${user.prenom} ${user.nom}` },
       JWT_SECRET,
       { expiresIn: "24h" }
     );
@@ -175,7 +165,7 @@ app.post("/api/auth/login", async (req, res) => {
     // Log login action
     await db.insert(activityLogs).values({
       userId: user.id,
-      username: user.username,
+      username: `${user.prenom} ${user.nom}`,
       action: "LOGIN",
       details: `User logged in successfully from IP ${ip}`,
       ipAddress: ip,
@@ -185,10 +175,10 @@ app.post("/api/auth/login", async (req, res) => {
       token,
       user: {
         id: user.id,
-        username: user.username,
+        username: `${user.prenom} ${user.nom}`,
         email: user.email,
-        role: user.role,
-        status: user.status,
+        role: mapRoleToFrontend(user.role),
+        status: user.actif ? "active" : "disabled",
       },
     });
   } catch (error) {
@@ -220,44 +210,51 @@ app.post("/api/auth/register", async (req, res) => {
     return res.status(400).json({ error: "Please enter a valid email address." });
   }
 
-  const requestedRole = role || "user";
-  const validRoles = ["admin", "manager", "commercial", "marketing", "user"];
+  // Map English roles to French if needed
+  let requestedRole = role || "Commercial";
+  if (requestedRole === "admin") requestedRole = "Administrateur";
+  if (requestedRole === "manager") requestedRole = "Manager";
+  if (requestedRole === "commercial") requestedRole = "Commercial";
+  if (requestedRole === "marketing") requestedRole = "AgentMarketing";
+
+  const validRoles = ["Administrateur", "Manager", "Commercial", "AgentMarketing"];
   if (!validRoles.includes(requestedRole)) {
     return res.status(400).json({ error: "Invalid role specified." });
   }
 
   try {
-    // Check if username already exists
-    const existingUser = await db.select().from(users).where(eq(users.username, username)).limit(1);
-    if (existingUser.length > 0) {
-      return res.status(400).json({ error: "Username already taken." });
-    }
-
     // Check if email already exists
-    const existingEmail = await db.select().from(users).where(eq(users.email, email)).limit(1);
-    if (existingEmail.length > 0) {
+    const existingEmailRes = await pool.query(
+      "SELECT 1 FROM utilisateur WHERE email = $1 LIMIT 1",
+      [email]
+    );
+    if (existingEmailRes.rows.length > 0) {
       return res.status(400).json({ error: "Email already registered." });
     }
+
+    // Split username to nom and prenom
+    const parts = username.trim().split(/\s+/);
+    const prenom = parts[0] || "Utilisateur";
+    const nom = parts.slice(1).join(" ") || "CRM";
 
     // Hash Password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // Insert user
-    const newUserList = await db.insert(users).values({
-      username,
-      email,
-      password: hashedPassword,
-      role: requestedRole,
-      status: "active",
-    }).returning();
-
-    const newUser = newUserList[0];
+    // Insert user into utilisateur
+    const insertRes = await pool.query(
+      `INSERT INTO utilisateur (nom, prenom, email, mot_de_passe, role, actif)
+       VALUES ($1, $2, $3, $4, $5, TRUE)
+       RETURNING *`,
+      [nom, prenom, email, hashedPassword, requestedRole]
+    );
+    const newUser = insertRes.rows[0];
+    const newUsername = `${newUser.prenom} ${newUser.nom}`;
 
     // Log registration
     await db.insert(activityLogs).values({
       userId: newUser.id,
-      username: newUser.username,
+      username: newUsername,
       action: "REGISTER",
       details: `User registered self-service with role: ${newUser.role}`,
       ipAddress: ip,
@@ -265,7 +262,7 @@ app.post("/api/auth/register", async (req, res) => {
 
     // Auto-login upon registration
     const token = jwt.sign(
-      { id: newUser.id, username: newUser.username },
+      { id: newUser.id, username: newUsername },
       JWT_SECRET,
       { expiresIn: "24h" }
     );
@@ -274,10 +271,10 @@ app.post("/api/auth/register", async (req, res) => {
       token,
       user: {
         id: newUser.id,
-        username: newUser.username,
+        username: newUsername,
         email: newUser.email,
-        role: newUser.role,
-        status: newUser.status,
+        role: mapRoleToFrontend(newUser.role),
+        status: newUser.actif ? "active" : "disabled",
       },
     });
   } catch (error) {
@@ -307,7 +304,16 @@ app.post("/api/auth/logout", authenticateToken, async (req: CustomRequest, res) 
 
 // Me (Check current session details)
 app.get("/api/auth/me", authenticateToken, (req: CustomRequest, res) => {
-  res.json({ user: req.user });
+  if (req.user) {
+    res.json({
+      user: {
+        ...req.user,
+        role: mapRoleToFrontend(req.user.role),
+      },
+    });
+  } else {
+    res.status(401).json({ error: "Access denied." });
+  }
 });
 
 
@@ -316,20 +322,21 @@ app.get("/api/auth/me", authenticateToken, (req: CustomRequest, res) => {
 // Get all users
 app.get("/api/admin/users", authenticateToken, requireAdmin, async (req: CustomRequest, res) => {
   try {
-    const allUsers = await db
-      .select({
-        id: users.id,
-        username: users.username,
-        email: users.email,
-        role: users.role,
-        status: users.status,
-        createdAt: users.createdAt,
-        updatedAt: users.updatedAt,
-      })
-      .from(users)
-      .orderBy(desc(users.createdAt));
+    const userQuery = await pool.query(
+      "SELECT id, nom, prenom, email, role, actif FROM utilisateur ORDER BY id DESC"
+    );
     
-    res.json(allUsers);
+    const mappedUsers = userQuery.rows.map(u => ({
+      id: u.id,
+      username: `${u.prenom} ${u.nom}`,
+      email: u.email,
+      role: mapRoleToFrontend(u.role),
+      status: u.actif ? "active" : "disabled",
+      createdAt: new Date(), // Table lacks creation date, fallback to now
+      updatedAt: new Date(),
+    }));
+    
+    res.json(mappedUsers);
   } catch (error) {
     console.error("Get users error:", error);
     res.status(500).json({ error: "Failed to fetch users." });
@@ -346,46 +353,52 @@ app.post("/api/admin/users", authenticateToken, requireAdmin, async (req: Custom
   }
 
   try {
-    // Check constraints
-    const existingUser = await db.select().from(users).where(eq(users.username, username)).limit(1);
-    if (existingUser.length > 0) {
-      return res.status(400).json({ error: "Username already taken." });
-    }
-
-    const existingEmail = await db.select().from(users).where(eq(users.email, email)).limit(1);
-    if (existingEmail.length > 0) {
+    const cleanEmail = String(email || "").trim().toLowerCase();
+    
+    // Check if email already registered
+    const existingEmail = await pool.query(
+      "SELECT 1 FROM utilisateur WHERE LOWER(email) = $1 LIMIT 1",
+      [cleanEmail]
+    );
+    if (existingEmail.rows.length > 0) {
       return res.status(400).json({ error: "Email already registered." });
     }
 
+    // Split username to prenom and nom
+    const parts = username.trim().split(/\s+/);
+    const prenom = parts[0] || "Utilisateur";
+    const nom = parts.slice(1).join(" ") || "CRM";
+
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
+    const mappedRole = mapRoleToBackend(role);
+    const active = status !== "disabled";
 
-    const inserted = await db.insert(users).values({
-      username,
-      email,
-      password: hashedPassword,
-      role,
-      status: status || "active",
-    }).returning();
-
-    const createdUser = inserted[0];
+    const insertRes = await pool.query(
+      `INSERT INTO utilisateur (nom, prenom, email, mot_de_passe, role, actif)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING *`,
+      [nom, prenom, cleanEmail, hashedPassword, mappedRole, active]
+    );
+    
+    const createdUser = insertRes.rows[0];
 
     // Log admin action
     await db.insert(activityLogs).values({
       userId: req.user!.id,
       username: req.user!.username,
       action: "REGISTER",
-      details: `Admin created user '${createdUser.username}' with role '${createdUser.role}' and status '${createdUser.status}'`,
+      details: `Admin created user '${createdUser.prenom} ${createdUser.nom}' with role '${createdUser.role}' and status '${createdUser.actif ? "active" : "disabled"}'`,
       ipAddress: ip,
     });
 
     res.status(201).json({
       id: createdUser.id,
-      username: createdUser.username,
+      username: `${createdUser.prenom} ${createdUser.nom}`,
       email: createdUser.email,
-      role: createdUser.role,
-      status: createdUser.status,
-      createdAt: createdUser.createdAt,
+      role: mapRoleToFrontend(createdUser.role),
+      status: createdUser.actif ? "active" : "disabled",
+      createdAt: new Date(),
     });
   } catch (error) {
     console.error("Admin user creation error:", error);
@@ -396,7 +409,7 @@ app.post("/api/admin/users", authenticateToken, requireAdmin, async (req: Custom
 // Edit user (role, status, email, username)
 app.put("/api/admin/users/:id", authenticateToken, requireAdmin, async (req: CustomRequest, res) => {
   const targetUserId = parseInt(req.params.id);
-  const { username, email, role, status } = req.body;
+  const { username, email, role, status, password } = req.body;
   const ip = req.ip || "127.0.0.1";
 
   if (isNaN(targetUserId)) {
@@ -414,48 +427,77 @@ app.put("/api/admin/users/:id", authenticateToken, requireAdmin, async (req: Cus
   }
 
   try {
-    const userList = await db.select().from(users).where(eq(users.id, targetUserId)).limit(1);
-    const targetUser = userList[0];
+    const userQuery = await pool.query(
+      "SELECT * FROM utilisateur WHERE id = $1 LIMIT 1",
+      [targetUserId]
+    );
+    const targetUser = userQuery.rows[0];
 
     if (!targetUser) {
       return res.status(404).json({ error: "User not found." });
     }
 
-    const updates: Partial<typeof users.$inferInsert> = {
-      updatedAt: new Date(),
-    };
+    let prenom = targetUser.prenom;
+    let nom = targetUser.nom;
+    let cleanEmail = targetUser.email;
+    let mappedRole = targetUser.role;
+    let active = targetUser.actif;
+    let hashedPassword = targetUser.mot_de_passe;
 
-    let logMessage = `Admin updated user '${targetUser.username}':`;
+    let logMessage = `Admin updated user '${targetUser.prenom} ${targetUser.nom}':`;
 
-    if (username && username !== targetUser.username) {
-      const existingUser = await db.select().from(users).where(eq(users.username, username)).limit(1);
-      if (existingUser.length > 0) {
-        return res.status(400).json({ error: "Username already taken." });
+    if (username) {
+      const parts = username.trim().split(/\s+/);
+      prenom = parts[0] || "Utilisateur";
+      nom = parts.slice(1).join(" ") || "CRM";
+      if (prenom !== targetUser.prenom || nom !== targetUser.nom) {
+        logMessage += ` Name updated to '${username}'.`;
       }
-      updates.username = username;
-      logMessage += ` Username updated to '${username}'.`;
     }
 
-    if (email && email !== targetUser.email) {
-      const existingEmail = await db.select().from(users).where(eq(users.email, email)).limit(1);
-      if (existingEmail.length > 0) {
+    if (email && email.toLowerCase() !== targetUser.email.toLowerCase()) {
+      cleanEmail = email.trim().toLowerCase();
+      const existingEmail = await pool.query(
+        "SELECT 1 FROM utilisateur WHERE LOWER(email) = $1 AND id != $2 LIMIT 1",
+        [cleanEmail, targetUserId]
+      );
+      if (existingEmail.rows.length > 0) {
         return res.status(400).json({ error: "Email already registered." });
       }
-      updates.email = email;
-      logMessage += ` Email updated to '${email}'.`;
+      logMessage += ` Email updated to '${cleanEmail}'.`;
     }
 
-    if (role && role !== targetUser.role) {
-      updates.role = role;
-      logMessage += ` Role updated from '${targetUser.role}' to '${role}'.`;
+    if (role) {
+      const targetBackendRole = mapRoleToBackend(role);
+      if (targetBackendRole !== targetUser.role) {
+        mappedRole = targetBackendRole;
+        logMessage += ` Role updated from '${targetUser.role}' to '${mappedRole}'.`;
+      }
     }
 
-    if (status && status !== targetUser.status) {
-      updates.status = status;
-      logMessage += ` Status updated from '${targetUser.status}' to '${status}'.`;
+    if (status) {
+      const targetActive = status !== "disabled";
+      if (targetActive !== targetUser.actif) {
+        active = targetActive;
+        logMessage += ` Status updated from '${targetUser.actif ? "active" : "disabled"}' to '${active ? "active" : "disabled"}'.`;
+      }
     }
 
-    await db.update(users).set(updates).where(eq(users.id, targetUserId));
+    if (password && password.trim().length > 0) {
+      if (password.length < 6) {
+        return res.status(400).json({ error: "Le mot de passe doit contenir au moins 6 caractères." });
+      }
+      const salt = await bcrypt.genSalt(10);
+      hashedPassword = await bcrypt.hash(password, salt);
+      logMessage += ` Password was changed.`;
+    }
+
+    await pool.query(
+      `UPDATE utilisateur 
+       SET nom = $1, prenom = $2, email = $3, role = $4, actif = $5, mot_de_passe = $6
+       WHERE id = $7`,
+      [nom, prenom, cleanEmail, mappedRole, active, hashedPassword, targetUserId]
+    );
 
     // Log the update
     await db.insert(activityLogs).values({
@@ -487,25 +529,28 @@ app.delete("/api/admin/users/:id", authenticateToken, requireAdmin, async (req: 
   }
 
   try {
-    const userList = await db.select().from(users).where(eq(users.id, targetUserId)).limit(1);
-    const targetUser = userList[0];
+    const userQuery = await pool.query(
+      "SELECT * FROM utilisateur WHERE id = $1 LIMIT 1",
+      [targetUserId]
+    );
+    const targetUser = userQuery.rows[0];
 
     if (!targetUser) {
       return res.status(404).json({ error: "User not found." });
     }
 
-    await db.delete(users).where(eq(users.id, targetUserId));
+    await pool.query("DELETE FROM utilisateur WHERE id = $1", [targetUserId]);
 
     // Log deletion
     await db.insert(activityLogs).values({
       userId: req.user!.id,
       username: req.user!.username,
       action: "DELETE_USER",
-      details: `Admin deleted user account '${targetUser.username}' (ID: ${targetUserId})`,
+      details: `Admin deleted user account '${targetUser.prenom} ${targetUser.nom}' (ID: ${targetUserId})`,
       ipAddress: ip,
     });
 
-    res.json({ message: `User '${targetUser.username}' successfully deleted.` });
+    res.json({ message: `User '${targetUser.prenom} ${targetUser.nom}' successfully deleted.` });
   } catch (error) {
     console.error("Delete user error:", error);
     res.status(500).json({ error: "Failed to delete user." });
@@ -527,6 +572,14 @@ app.get("/api/admin/logs", authenticateToken, requireAdmin, async (req: CustomRe
     res.status(500).json({ error: "Failed to fetch activity logs." });
   }
 });
+
+// Mount CRM routes protected by the auth middleware
+app.use("/api/leads", authenticateToken, leadRouter);
+app.use("/api/entreprises", authenticateToken, entrepriseRouter);
+app.use("/api/tasks", authenticateToken, tacheRouter);
+app.use("/api/devis", authenticateToken, devisRouter);
+app.use("/api/notifications", authenticateToken, notificationRouter);
+app.use("/api/kpis", authenticateToken, kpiRouter);
 
 
 // --- VITE DEV / PRODUCTION BUILD HANDLER ---

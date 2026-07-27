@@ -1,5 +1,5 @@
 import React from "react";
-import { Shield, Sun, Moon, LogOut } from "lucide-react";
+import { Shield, Sun, Moon, LogOut, Menu } from "lucide-react";
 import { UserProfile } from "../../types";
 
 interface HeaderProps {
@@ -7,6 +7,7 @@ interface HeaderProps {
   isDarkMode: boolean;
   onToggleDarkMode: () => void;
   onLogout: () => void;
+  onToggleSidebar?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -14,10 +15,20 @@ export const Header: React.FC<HeaderProps> = ({
   isDarkMode,
   onToggleDarkMode,
   onLogout,
+  onToggleSidebar,
 }) => {
   return (
     <header className="bg-dracl-card dark:bg-drac-card border-b border-neutral-200/60 dark:border-neutral-800/40 p-4 flex justify-between items-center sticky top-0 z-50 shrink-0">
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2">
+        {currentUser && onToggleSidebar && (
+          <button
+            onClick={onToggleSidebar}
+            className="p-1.5 md:hidden rounded-lg border border-neutral-200/60 dark:border-neutral-800/40 bg-dracl-card dark:bg-drac-card hover:bg-dracl-sub dark:hover:bg-drac-sub text-dracl-fg dark:text-drac-fg transition-all cursor-pointer mr-1"
+            title="Ouvrir le menu"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+        )}
         <Shield className="w-6 h-6 text-rosepine-iris animate-pulse shrink-0" />
         <h1 className="text-xl font-display font-bold tracking-tight">LEADFLOW</h1>
       </div>

@@ -45,3 +45,6 @@ Thumbs.db
 *.db
 .gemini/
 .agents/
+
+# Project Overview Document
+overview.md

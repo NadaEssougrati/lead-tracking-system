@@ -2,19 +2,17 @@ import React, { useState, useEffect } from "react";
 import {
   UserProfile,
   ActivityLog,
-  AdminTab,
-  UserTab,
   LoginFormState,
   NewUserFormState,
   EditUserFormState,
 } from "./types";
-import { authApi, adminApi } from "./services/api";
+import { authApi } from "./services/authApi";
+import { adminApi } from "./services/adminApi";
 
 import { Header } from "./components/common/Header";
 import { Footer } from "./components/common/Footer";
 import { NotificationBanner } from "./components/common/NotificationBanner";
 import { LoadingSpinner } from "./components/common/LoadingSpinner";
-import { PermissionsMatrix } from "./components/common/PermissionsMatrix";
 
 import { LoginForm } from "./components/auth/LoginForm";
 import { Sidebar } from "./components/layout/Sidebar";
@@ -49,8 +47,8 @@ export default function App() {
   const [apiSuccess, setApiSuccess] = useState<string | null>(null);
 
   // Dashboard Navigation State
-  const [adminTab, setAdminTab] = useState<AdminTab>("users");
-  const [userTab, setUserTab] = useState<UserTab>("host");
+  const [activeTab, setActiveTab] = useState<string>("dashboard");
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Admin Workspace State
   const [users, setUsers] = useState<UserProfile[]>([]);
@@ -77,6 +75,7 @@ export default function App() {
     email: "",
     role: "user",
     status: "active",
+    password: "",
   });
   const [editUserErrors, setEditUserErrors] = useState<Record<string, string>>({});
 
@@ -223,6 +222,11 @@ export default function App() {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(editUserForm.email)) errors.email = "Format invalide";
     }
+    if (editUserForm.password && editUserForm.password.trim().length > 0) {
+      if (editUserForm.password.length < 6) {
+        errors.password = "Au moins 6 caractères";
+      }
+    }
     setEditUserErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -301,6 +305,7 @@ export default function App() {
       email: user.email,
       role: user.role,
       status: user.status,
+      password: "",
     });
     setEditUserErrors({});
   };
@@ -311,14 +316,15 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-dracl-bg dark:bg-drac-bg text-dracl-fg dark:text-drac-fg font-sans flex flex-col select-none overflow-x-hidden">
-      <div className="w-full flex-1 flex flex-col overflow-hidden min-h-screen">
+    <div className="h-screen bg-dracl-bg dark:bg-drac-bg text-dracl-fg dark:text-drac-fg font-sans flex flex-col select-none overflow-hidden">
+      <div className="w-full flex-1 flex flex-col overflow-hidden h-screen">
         {/* TOP SYSTEM BAR */}
         <Header
           currentUser={currentUser}
           isDarkMode={isDarkMode}
           onToggleDarkMode={() => setIsDarkMode(!isDarkMode)}
           onLogout={handleLogout}
+          onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
         />
 
         {/* SYSTEM BANNERS & NOTIFICATIONS */}
@@ -344,76 +350,77 @@ export default function App() {
             <>
               {/* SIDEBAR NAVIGATION */}
               <Sidebar
-                userRole={currentUser.role}
-                adminTab={adminTab}
-                userTab={userTab}
-                onAdminTabChange={setAdminTab}
-                onUserTabChange={setUserTab}
+                currentUser={currentUser}
+                activeTab={activeTab}
+                onTabChange={(tab) => {
+                  setActiveTab(tab);
+                  setIsSidebarOpen(false);
+                }}
+                isOpen={isSidebarOpen}
+                onClose={() => setIsSidebarOpen(false)}
               />
+
+              {/* MOBILE BACKDROP OVERLAY */}
+              {isSidebarOpen && (
+                <div
+                  className="fixed inset-0 bg-black/50 z-30 md:hidden cursor-pointer"
+                  onClick={() => setIsSidebarOpen(false)}
+                />
+              )}
 
               {/* MAIN WORKING CONTENT AREA */}
               <main className="flex-1 flex flex-col overflow-hidden bg-dracl-bg dark:bg-drac-bg">
-                {currentUser.role === "admin" ? (
-                  <>
-                    {adminTab === "users" && (
-                      <AdminUsers
-                        users={users}
-                        loadingUsers={loadingUsers}
-                        currentUserId={currentUser.id}
-                        isCreatingUser={isCreatingUser}
-                        editingUser={editingUser}
-                        newUserForm={newUserForm}
-                        newUserErrors={newUserErrors}
-                        editUserForm={editUserForm}
-                        editUserErrors={editUserErrors}
-                        onRefresh={fetchUsersList}
-                        onToggleCreate={() => {
-                          setIsCreatingUser(!isCreatingUser);
-                          setEditingUser(null);
-                        }}
-                        onCloseCreate={() => setIsCreatingUser(false)}
-                        onCloseEdit={() => setEditingUser(null)}
-                        onNewUserFormChange={(fields) =>
-                          setNewUserForm({ ...newUserForm, ...fields })
-                        }
-                        onEditUserFormChange={(fields) =>
-                          setEditUserForm({ ...editUserForm, ...fields })
-                        }
-                        onAdminCreateUser={handleAdminCreateUser}
-                        onAdminUpdateUser={handleAdminUpdateUser}
-                        onAdminToggleStatus={handleAdminToggleStatus}
-                        onAdminChangeRole={handleAdminChangeRole}
-                        onAdminDeleteUser={handleAdminDeleteUser}
-                        onStartEditing={startEditing}
-                      />
-                    )}
+                {activeTab === "workspace" && (
+                  <PlaceholderTab title="Leads" />
+                )}
 
-                    {adminTab === "matrix" && (
-                      <PermissionsMatrix userRole={currentUser.role} isUserView={false} />
-                    )}
+                {activeTab === "users" && currentUser.role === "admin" && (
+                  <AdminUsers
+                    users={users}
+                    loadingUsers={loadingUsers}
+                    currentUserId={currentUser.id}
+                    isCreatingUser={isCreatingUser}
+                    editingUser={editingUser}
+                    newUserForm={newUserForm}
+                    newUserErrors={newUserErrors}
+                    editUserForm={editUserForm}
+                    editUserErrors={editUserErrors}
+                    onRefresh={fetchUsersList}
+                    onToggleCreate={() => {
+                      setIsCreatingUser(!isCreatingUser);
+                      setEditingUser(null);
+                    }}
+                    onCloseCreate={() => setIsCreatingUser(false)}
+                    onCloseEdit={() => setEditingUser(null)}
+                    onNewUserFormChange={(fields) =>
+                      setNewUserForm({ ...newUserForm, ...fields })
+                    }
+                    onEditUserFormChange={(fields) =>
+                      setEditUserForm({ ...editUserForm, ...fields })
+                    }
+                    onAdminCreateUser={handleAdminCreateUser}
+                    onAdminUpdateUser={handleAdminUpdateUser}
+                    onAdminToggleStatus={handleAdminToggleStatus}
+                    onAdminChangeRole={handleAdminChangeRole}
+                    onAdminDeleteUser={handleAdminDeleteUser}
+                    onStartEditing={startEditing}
+                  />
+                )}
 
-                    {adminTab === "logs" && (
-                      <AdminLogs
-                        logs={logs}
-                        loadingLogs={loadingLogs}
-                        logFilter={logFilter}
-                        logActionFilter={logActionFilter}
-                        onLogFilterChange={setLogFilter}
-                        onLogActionFilterChange={setLogActionFilter}
-                        onRefresh={fetchLogsList}
-                      />
-                    )}
-                  </>
-                ) : (
-                  <>
-                    {userTab === "host" && (
-                      <UserWorkspace currentUser={currentUser} onLogout={handleLogout} />
-                    )}
+                {activeTab === "logs" && currentUser.role === "admin" && (
+                  <AdminLogs
+                    logs={logs}
+                    loadingLogs={loadingLogs}
+                    logFilter={logFilter}
+                    logActionFilter={logActionFilter}
+                    onLogFilterChange={setLogFilter}
+                    onLogActionFilterChange={setLogActionFilter}
+                    onRefresh={fetchLogsList}
+                  />
+                )}
 
-                    {userTab === "matrix" && (
-                      <PermissionsMatrix userRole={currentUser.role} isUserView={true} />
-                    )}
-                  </>
+                {!["workspace", "users", "logs"].includes(activeTab) && (
+                  <PlaceholderTab title={getTabLabel(activeTab)} />
                 )}
               </main>
             </>
@@ -426,3 +433,40 @@ export default function App() {
     </div>
   );
 }
+
+const PlaceholderTab: React.FC<{ title: string }> = ({ title }) => (
+  <div className="flex-1 flex flex-col items-center justify-center p-8 bg-dracl-bg dark:bg-drac-bg text-center">
+    <div className="blunt-card max-w-md p-8 border border-neutral-200/60 dark:border-neutral-800/40 bg-dracl-card dark:bg-drac-card shadow-lg text-center">
+      <h3 className="font-display font-black text-xl text-rosepine-rose uppercase tracking-wider mb-2">
+        {title}
+      </h3>
+      <p className="text-xs text-dracl-muted dark:text-drac-comment leading-relaxed font-mono uppercase">
+        Cette section est en cours de développement.
+      </p>
+      <div className="mt-6 border-t border-neutral-200/60 dark:border-neutral-800/40 pt-4 flex justify-center">
+        <span className="text-[10px] font-bold font-mono px-3 py-1.5 rounded-full bg-rosepine-iris/10 text-rosepine-iris uppercase tracking-widest animate-pulse">
+          Placeholder Sandbox
+        </span>
+      </div>
+    </div>
+  </div>
+);
+
+const getTabLabel = (tab: string): string => {
+  switch (tab) {
+    case "dashboard": return "Tableau de bord";
+    case "opportunities": return "Opportunités";
+    case "companies": return "Entreprises";
+    case "contacts": return "Contacts";
+    case "tasks": return "Tâches";
+    case "calls": return "Appels";
+    case "emails": return "Emails";
+    case "appointments": return "Rendez-vous";
+    case "reports": return "Rapports";
+    case "analytics": return "Analyses & Performance";
+    case "team": return "Équipe";
+    case "settings": return "Paramètres";
+    case "help": return "Help & Support";
+    default: return "Section";
+  }
+};

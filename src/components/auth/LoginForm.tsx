@@ -16,18 +16,34 @@ export const LoginForm: React.FC<LoginFormProps> = ({
   onSubmit,
 }) => {
   return (
-    <div className="flex-1 flex justify-center items-center bg-dracl-bg dark:bg-drac-bg p-4 md:p-12 overflow-y-auto">
-      <div className="w-full max-w-md blunt-card shadow-[0_4px_30px_rgba(0,0,0,0.06)] bg-dracl-card dark:bg-drac-card flex flex-col p-6 md:p-8">
-        <div className="text-center mb-6">
-          <div className="inline-flex p-3 rounded-full bg-rosepine-iris/10 text-rosepine-iris mb-3">
+    <div className="flex-1 flex justify-center items-center bg-dracl-bg dark:bg-drac-bg wavy-dots-bg p-4 md:p-12 overflow-y-auto overflow-hidden">
+      {/* Animated Wavy Diagonal Notebook Dot Grid Background */}
+      <div
+        className="absolute inset-0 grid gap-0 p-4 overflow-hidden pointer-events-none select-none"
+        style={{ gridTemplateColumns: "repeat(40, 1fr)", gridTemplateRows: "repeat(25, 1fr)" }}
+      >
+        {Array.from({ length: 1000 }).map((_, idx) => {
+          const col = idx % 40;
+          const row = Math.floor(idx / 40);
+          return (
+            <div key={idx} className="flex justify-center items-center w-full h-full">
+              <div
+                className="w-[1.5px] h-[1.5px] rounded-full bg-rosepine-iris/25 dark:bg-rosepine-iris/20 animate-dot-wave"
+                style={{
+                  animationDelay: `${(col + row) * 0.08}s`,
+                  transformOrigin: "center"
+                }}
+              />
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="w-full max-w-md blunt-card shadow-[0_4px_30px_rgba(0,0,0,0.06)] bg-dracl-card dark:bg-drac-card flex flex-col pt-10 pb-8 px-6 md:px-8 z-10">
+        <div className="text-center mb-8">
+          <div className="inline-flex p-3 rounded-full bg-rosepine-iris/10 text-rosepine-iris mb-4">
             <Shield className="w-8 h-8" />
           </div>
-          <h2 className="text-xl font-display font-bold uppercase tracking-tight text-dracl-fg dark:text-white">
-            LeadFlow
-          </h2>
-          <p className="text-xs text-dracl-muted dark:text-drac-comment font-mono uppercase tracking-wider mt-1">
-            Authentification sécurisée
-          </p>
         </div>
 
         {/* Form fields */}
