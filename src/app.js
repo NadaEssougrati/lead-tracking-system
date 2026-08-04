@@ -1,18 +1,18 @@
-const express = require("express");
-const cors = require("cors");
-const helmet = require("helmet");
-const compression = require("compression");
-const cookieParser = require("cookie-parser");
-const morgan = require("morgan");
-const path = require("path");
-const rateLimit = require("express-rate-limit");
-const authRoutes = require("./routes/auth.routes");
-const usersRoutes = require("./routes/users.routes");
-const leadsRoutes = require("./routes/leads.routes");
-const resourcesRoutes = require("./routes/resources.routes");
-const documentsRoutes = require("./routes/documents.routes");
-const dashboardRoutes = require("./routes/dashboard.routes");
-const aiRoutes = require("./routes/ai.routes");
+import express from "express";
+import cors from "cors";
+import helmet from "helmet";
+import compression from "compression";
+import cookieParser from "cookie-parser";
+import morgan from "morgan";
+import path from "path";
+import rateLimit from "express-rate-limit";
+import authRoutes from "./routes/auth.routes.js";
+import usersRoutes from "./routes/users.routes.js";
+import leadsRoutes from "./routes/leads.routes.js";
+import resourcesRoutes from "./routes/resources.routes.js";
+import documentsRoutes from "./routes/documents.routes.js";
+import dashboardRoutes from "./routes/dashboard.routes.js";
+import aiRoutes from "./routes/ai.routes.js";
 
 const app = express();
 
@@ -23,6 +23,8 @@ const allowedOrigins = new Set([
   ...clientUrls,
   "http://127.0.0.1:3000",
   "http://localhost:3000",
+  "http://127.0.0.1:5000",
+  "http://localhost:5000",
 ]);
 
 const corsOptions = {
@@ -34,31 +36,28 @@ const corsOptions = {
   credentials: true,
   optionsSuccessStatus: 204,
 };
-
 app.use(cors(corsOptions));
 
-app.use(helmet());
-
-app.use(compression());
-
-app.use(express.json());
-
-app.use(express.urlencoded({
-  extended: true
+// Set up security headers, but allow inline scripts/styles for Vite development
+app.use(helmet({
+  contentSecurityPolicy: false,
+  crossOriginEmbedderPolicy: false,
 }));
 
+app.use(compression());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
-
 app.use(morgan("dev"));
-app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 300, standardHeaders: true, legacyHeaders: false }));
-app.use("/uploads", express.static(path.resolve(process.env.UPLOAD_PATH || "uploads")));
 
-app.get("/", (req, res) => {
-  res.json({
-    success: true,
-    message: "Tracking Lead System API"
-  });
-});
+app.use(rateLimit({ 
+  windowMs: 15 * 60 * 1000, 
+  max: 300, 
+  standardHeaders: true, 
+  legacyHeaders: false 
+}));
+
+app.use("/uploads", express.static(path.resolve(process.env.UPLOAD_PATH || "uploads")));
 
 app.get("/api/health", (req, res) => res.json({ success: true, status: "healthy" }));
 app.use("/api/auth", authRoutes);
@@ -68,7 +67,8 @@ app.use("/api", resourcesRoutes);
 app.use("/api/documents", documentsRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/ai", aiRoutes);
-app.use((req, res) => res.status(404).json({ success: false, message: "Route introuvable." }));
+
+// Error Handling Middleware
 app.use((err, req, res, next) => {
   console.error(err);
   if (err.code === "P2002") return res.status(409).json({ success: false, message: "Cette valeur existe déjà." });
@@ -77,4 +77,4 @@ app.use((err, req, res, next) => {
   return res.status(500).json({ success: false, message: "Erreur interne du serveur." });
 });
 
-module.exports = app;
+export default app;

@@ -1,6 +1,8 @@
-const router = require("express").Router();
-const prisma = require("../lib/prisma");
-const { authenticate, allowRoles } = require("../middleware/auth");
+import express from "express";
+import prisma from "../lib/prisma.js";
+import { authenticate, allowRoles } from "../middleware/auth.js";
+
+const router = express.Router();
 
 router.use(authenticate);
 
@@ -271,4 +273,4 @@ router.patch("/companies/:id", allowRoles("Administrateur", "Manager", "AgentMar
   }
 });
 
-module.exports = router;
+export default router;
