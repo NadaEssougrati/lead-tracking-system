@@ -13,7 +13,9 @@ import {
   FileText, 
   Settings,
   Target,
-  LogOut
+  LogOut,
+  Sun,
+  Moon
 } from "lucide-react";
 import { Role, User as UserType } from "../types";
 import { usePreferences } from "../AppPreferences";
@@ -51,7 +53,7 @@ export default function Sidebar({
   activeUser,
   users,
 }: SidebarProps) {
-  const { t } = usePreferences();
+  const { t, theme, setTheme } = usePreferences();
 
   const handleLogout = () => {
     setAccessToken(null);
@@ -176,13 +178,22 @@ export default function Sidebar({
         ))}
       </div>
 
-      {/* User Identity Info & Logout Action merged here */}
+      {/* User Identity Info & Toggle theme option next to name */}
       <div className="p-4 border-t border-blue-950 bg-[#070e1b] flex flex-col gap-3 flex-shrink-0">
-        <div className="flex items-center gap-2.5 px-1">
-          <div className="h-7 w-7 rounded-full bg-blue-600/10 border border-blue-500/20 flex items-center justify-center text-xs font-bold text-blue-300 select-none">
-            {activeUser.nom.split(" ").map((n) => n[0]).join("")}
+        <div className="flex items-center justify-between px-1 gap-2">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="h-7 w-7 rounded-full bg-blue-600/10 border border-blue-500/20 flex items-center justify-center text-xs font-bold text-blue-300 select-none flex-shrink-0">
+              {activeUser.nom.split(" ").map((n) => n[0]).join("")}
+            </div>
+            <span className="text-xs font-semibold text-slate-200 truncate select-none">{activeUser.nom}</span>
           </div>
-          <span className="text-xs font-semibold text-slate-200 truncate select-none">{activeUser.nom}</span>
+          <button
+            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            className="p-1.5 rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-colors cursor-pointer flex-shrink-0"
+            title={theme === "dark" ? "Mode clair" : "Mode sombre"}
+          >
+            {theme === "dark" ? <Sun className="h-4 w-4 text-amber-400" /> : <Moon className="h-4 w-4 text-slate-400" />}
+          </button>
         </div>
         <button
           onClick={handleLogout}

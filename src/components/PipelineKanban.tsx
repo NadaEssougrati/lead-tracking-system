@@ -1,21 +1,17 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
 import React from "react";
 import { 
-  PlusCircle, 
-  ChevronRight, 
-  ChevronLeft, 
+  Plus, 
   MapPin, 
-  TrendingUp, 
+  DollarSign, 
+  Calendar, 
   User, 
-  FolderPlus,
+  ChevronRight, 
+  ChevronLeft,
   AlertCircle,
   Search
 } from "lucide-react";
 import { Lead, LeadStatus, Role, LeadPriority } from "../types";
+import { usePreferences } from "../AppPreferences";
 
 interface PipelineKanbanProps {
   leads: Lead[];
@@ -26,13 +22,13 @@ interface PipelineKanbanProps {
 }
 
 const STAGES = [
-  { id: LeadStatus.NEW, label: "Nouveau", color: "border-t-blue-500 bg-blue-50 text-blue-700" },
-  { id: LeadStatus.CONTACTED, label: "Contacté", color: "border-t-amber-500 bg-amber-50 text-amber-700" },
-  { id: LeadStatus.QUALIFIED, label: "Qualifié", color: "border-t-purple-500 bg-purple-50 text-purple-700" },
-  { id: LeadStatus.PROPOSAL, label: "Proposition envoyée", color: "border-t-pink-500 bg-pink-50 text-pink-700" },
-  { id: LeadStatus.NEGOTIATION, label: "Négociation", color: "border-t-cyan-500 bg-cyan-50 text-cyan-700" },
-  { id: LeadStatus.WON, label: "Converti (Gagné)", color: "border-t-emerald-500 bg-emerald-50 text-emerald-700" },
-  { id: LeadStatus.LOST, label: "Perdu", color: "border-t-rose-500 bg-rose-50 text-rose-700" }
+  { id: LeadStatus.NEW, labelKey: "kanban.nouveau", color: "border-t-blue-500 bg-blue-50 text-blue-700" },
+  { id: LeadStatus.CONTACTED, labelKey: "kanban.contacte", color: "border-t-amber-500 bg-amber-50 text-amber-700" },
+  { id: LeadStatus.QUALIFIED, labelKey: "kanban.qualifie", color: "border-t-purple-500 bg-purple-50 text-purple-700" },
+  { id: LeadStatus.PROPOSAL, labelKey: "kanban.proposition", color: "border-t-pink-500 bg-pink-50 text-pink-700" },
+  { id: LeadStatus.NEGOTIATION, labelKey: "kanban.negociation", color: "border-t-cyan-500 bg-cyan-50 text-cyan-700" },
+  { id: LeadStatus.WON, labelKey: "kanban.gagne", color: "border-t-emerald-500 bg-emerald-50 text-emerald-700" },
+  { id: LeadStatus.LOST, labelKey: "kanban.perdu", color: "border-t-rose-500 bg-rose-50 text-rose-700" }
 ];
 
 export default function PipelineKanban({
@@ -42,10 +38,19 @@ export default function PipelineKanban({
   userRole,
   commercialId
 }: PipelineKanbanProps) {
+  const { t } = usePreferences();
   const [searchQuery, setSearchQuery] = React.useState("");
 
+  const translatePriority = (priority: LeadPriority) => {
+    switch (priority) {
+      case LeadPriority.LOW: return t("leadform.low");
+      case LeadPriority.MEDIUM: return t("leadform.medium");
+      case LeadPriority.HIGH: return t("leadform.high");
+      default: return priority;
+    }
+  };
+
   // 1. Filter leads based on user permissions & search query
-  // matrix: "Consulter ses leads attribués uniquement" for Commercial!
   const filteredLeads = leads.filter((lead) => {
     if (userRole === Role.COMMERCIAL) {
       if (lead.commercialId !== commercialId) return false;
@@ -59,7 +64,7 @@ export default function PipelineKanban({
       const notesMatch = lead.notes?.toLowerCase().includes(query);
       return nomMatch || prenomMatch || emailMatch || societeMatch || notesMatch;
     }
-    return true; // admin, manager, marketing see all
+    return true; 
   });
 
   // Calculate sum of values for each stage
@@ -72,18 +77,17 @@ export default function PipelineKanban({
   // Helper to verify transition rights (Agent Marketing limits)
   const canMoveLead = (lead: Lead, targetStatus: LeadStatus) => {
     if (userRole === Role.MARKETING) {
-      // Agent Marketing can ONLY modify leads from "Nouveau" -> "Qualifié"
       const allowedTransitions = [
         { from: LeadStatus.NEW, to: LeadStatus.QUALIFIED },
         { from: LeadStatus.NEW, to: LeadStatus.CONTACTED }
       ];
       return allowedTransitions.some(t => t.from === lead.statut && t.to === targetStatus);
     }
-    return true; // admin, manager, commercial can move anywhere
+    return true; 
   };
 
   const handleMoveStage = (e: React.MouseEvent, lead: Lead, direction: "next" | "prev") => {
-    e.stopPropagation(); // prevent opening detailed card
+    e.stopPropagation(); 
 
     const currentIndex = STAGES.findIndex(s => s.id === lead.statut);
     if (currentIndex === -1) return;
@@ -94,7 +98,7 @@ export default function PipelineKanban({
     const targetStatus = STAGES[targetIndex].id;
 
     if (!canMoveLead(lead, targetStatus)) {
-      alert(`Droits d'accès restreints : En tant qu'${userRole}, vous pouvez uniquement faire évoluer un prospect de l'état 'Nouveau' vers 'Qualifié' ou 'Premier Contact'.`);
+      alert(t("kanban.restrictedAlert"));
       return;
     }
 
@@ -102,7 +106,7 @@ export default function PipelineKanban({
   };
 
   return (
-    <div className="flex-1 flex flex-col min-h-0 bg-slate-50 dark:bg-slate-950 p-6" id="pipeline-kanban-root">
+    <div className="flex-1 flex flex-col min-h-0 bg-slate-50 dark:bg-slate-950 p-6 animate-fade-in" id="pipeline-kanban-root">
       <div className="max-w-[1600px] mx-auto w-full flex-1 flex flex-col min-h-0">
       
       {/* Header Info */}
@@ -110,8 +114,8 @@ export default function PipelineKanban({
         <div className="flex-1 min-w-[200px]">
           <p className="text-xs text-slate-500">
             {userRole === Role.COMMERCIAL 
-              ? "Affichage de vos opportunités attribuées uniquement (Filtre Commercial actif)." 
-              : "Affichage de toutes les opportunités du CRM (Accès Superviseur actif)."}
+              ? t("kanban.commercialView") 
+              : t("kanban.managerView")}
           </p>
         </div>
 
@@ -122,7 +126,7 @@ export default function PipelineKanban({
           </span>
           <input
             type="text"
-            placeholder="Rechercher des opportunités..."
+            placeholder={t("header.search.placeholder")}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full bg-white text-slate-900 placeholder-slate-400 text-xs rounded-lg pl-9 pr-4 py-1.5 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-xs"
@@ -132,7 +136,7 @@ export default function PipelineKanban({
         {userRole === Role.MARKETING && (
           <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 text-amber-700 px-3 py-1.5 rounded-lg text-xs font-semibold">
             <AlertCircle className="h-4 w-4" />
-            <span>Rôle Marketing : Modification limitée à (Nouveau ➔ Qualifié)</span>
+            <span>{t("kanban.marketingLimit")}</span>
           </div>
         )}
       </div>
@@ -152,13 +156,13 @@ export default function PipelineKanban({
               {/* Column Header */}
               <div className={`p-4 border-t-4 border-b border-slate-200 bg-white flex flex-col justify-between ${stage.color}`}>
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-sm tracking-wide uppercase text-slate-800">{stage.label}</span>
+                  <span className="font-bold text-sm tracking-wide uppercase text-slate-800">{t(stage.labelKey)}</span>
                   <span className="text-xs bg-slate-100 text-slate-600 font-bold px-2 py-0.5 rounded-full border border-slate-200">
                     {stageLeads.length}
                   </span>
                 </div>
                 <div className="text-[11px] text-slate-500 font-bold mt-2.5 flex items-center justify-between">
-                  <span>Valeur totale :</span>
+                  <span>{t("kanban.totalValue")}</span>
                   <span className="text-slate-700">{(totalBudget).toLocaleString('fr-FR')} €</span>
                 </div>
               </div>
@@ -167,11 +171,10 @@ export default function PipelineKanban({
               <div className="p-3 space-y-3 overflow-y-auto max-h-[550px] divide-y-0 flex-1">
                 {stageLeads.length === 0 ? (
                   <div className="py-12 text-center text-slate-400 text-xs border-2 border-dashed border-slate-200 rounded-lg bg-white">
-                    Aucun prospect
+                    {t("kanban.empty")}
                   </div>
                 ) : (
                   stageLeads.map((lead) => {
-                    // Decide color of priority dot
                     const priorityColor = 
                       lead.priorite === LeadPriority.HIGH 
                         ? "bg-rose-500" 
@@ -183,7 +186,7 @@ export default function PipelineKanban({
                       <div
                         key={lead.id}
                         onClick={() => onSelectLead(lead.id)}
-                        className="p-3.5 bg-white rounded-lg border border-slate-200 hover:border-slate-300 hover:bg-slate-50/50 transition-all duration-150 cursor-pointer shadow-sm relative group flex flex-col gap-2"
+                        className="p-3.5 bg-white rounded-lg border border-slate-200 hover:border-slate-300 hover:bg-slate-50/50 transition-all duration-150 cursor-pointer shadow-sm relative group flex flex-col gap-2 animate-fade-in"
                         id={`lead-card-${lead.id}`}
                       >
                         {/* Title and company */}
@@ -206,7 +209,7 @@ export default function PipelineKanban({
                                 ? "bg-amber-50 text-amber-600 border border-amber-200" 
                                 : "bg-slate-100 text-slate-500 border border-slate-200"
                             }`}
-                            title="Score IA"
+                            title={t("kanban.scoreIA")}
                           >
                             {lead.score}
                           </div>
@@ -230,27 +233,24 @@ export default function PipelineKanban({
                         {/* Budget and Move Actions */}
                         <div className="flex items-center justify-between mt-1">
                           <div className="flex items-center gap-1.5">
-                            <span className={`h-2 w-2 rounded-full ${priorityColor}`} title={`Priorité ${lead.priorite}`}></span>
-                            <span className="text-xs font-bold text-slate-800">
-                              {(lead.valeurEstimee).toLocaleString('fr-FR')} €
-                            </span>
+                            <span className={`h-2 w-2 rounded-full ${priorityColor}`} title={`${t("kanban.priorityPrefix")} : ${translatePriority(lead.priorite)}`}></span>
+                            <span className="font-bold text-[11px] text-slate-700">{lead.valeurEstimee.toLocaleString('fr-FR')} €</span>
                           </div>
 
-                          {/* Quick Stage Evolution Controls */}
-                          <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <div className="flex gap-1 opacity-80 group-hover:opacity-100 transition-opacity">
                             <button
                               onClick={(e) => handleMoveStage(e, lead, "prev")}
-                              className="p-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-600 disabled:opacity-20 animate-fade-in"
+                              className="p-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-600 disabled:opacity-20 transition-all cursor-pointer"
                               disabled={stage.id === LeadStatus.NEW}
-                              title="Étape précédente"
+                              title={t("kanban.prev")}
                             >
                               <ChevronLeft className="h-3 w-3" />
                             </button>
                             <button
                               onClick={(e) => handleMoveStage(e, lead, "next")}
-                              className="p-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-600 disabled:opacity-20 animate-fade-in"
+                              className="p-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-600 disabled:opacity-20 transition-all cursor-pointer"
                               disabled={stage.id === LeadStatus.WON}
-                              title="Étape suivante"
+                              title={t("kanban.next")}
                             >
                               <ChevronRight className="h-3 w-3" />
                             </button>

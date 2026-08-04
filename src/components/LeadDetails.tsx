@@ -47,6 +47,7 @@ import {
   TaskStatus
 } from "../types";
 import LeadForm from "./LeadForm";
+import { usePreferences } from "../AppPreferences";
 
 interface LeadDetailsProps {
   activeTab?: string;
@@ -97,6 +98,7 @@ export default function LeadDetails({
   onSelectLead = () => {},
   onAddLead = () => {}
 }: LeadDetailsProps) {
+  const { t } = usePreferences();
   // Search & Filter state for the lead selector
   const [leadSearchTerm, setLeadSearchTerm] = useState("");
   const [leadStatusFilter, setLeadStatusFilter] = useState("all");
@@ -525,15 +527,15 @@ const avgScore = Math.round(companyLeads.reduce((sum, cl) => sum + cl.score, 0) 
             {/* Micro KPI Banner for Companies */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="bg-white border border-slate-200 p-4 rounded-xl shadow-sm flex flex-col justify-between">
-                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Total Entreprises</span>
+                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">{t("lead.totalCompanies")}</span>
                 <span className="text-xl font-extrabold text-slate-900 mt-1">{uniqueCompanies.length}</span>
               </div>
               <div className="bg-white border border-slate-200 p-4 rounded-xl shadow-sm flex flex-col justify-between">
-                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Opportunités Cumulées</span>
+                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">{t("lead.cumulatedOpps")}</span>
                 <span className="text-xl font-extrabold text-blue-600 mt-1">{totalPortfolioValue.toLocaleString('fr-FR')} €</span>
               </div>
               <div className="bg-white border border-slate-200 p-4 rounded-xl shadow-sm flex flex-col justify-between">
-                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Budget Moyen par Compte</span>
+                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">{t("lead.avgBudget")}</span>
                 <span className="text-xl font-extrabold text-emerald-600 mt-1">{avgPortfolioValue.toLocaleString('fr-FR')} €</span>
               </div>
             </div>
@@ -544,7 +546,7 @@ const avgScore = Math.round(companyLeads.reduce((sum, cl) => sum + cl.score, 0) 
                 <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
                 <input
                   type="text"
-                  placeholder="Rechercher une entreprise, ville, pays..."
+                  placeholder={t("lead.searchCompanyPlaceholder")}
                   value={leadSearchTerm}
                   onChange={(e) => setLeadSearchTerm(e.target.value)}
                   className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 pl-9 pr-4 text-slate-700 text-xs focus:outline-none focus:border-blue-500 focus:bg-white"
@@ -557,7 +559,7 @@ const avgScore = Math.round(companyLeads.reduce((sum, cl) => sum + cl.score, 0) 
                   onChange={(e) => setLeadStatusFilter(e.target.value)}
                   className="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-600 font-semibold cursor-pointer text-xs focus:ring-0 w-full sm:w-auto focus:bg-white"
                 >
-                  <option value="all">Toutes les étapes d'opportunité</option>
+                  <option value="all">{t("lead.allCompanyStages")}</option>
                   {Object.values(LeadStatus).map(st => (
                     <option key={st} value={st}>{st}</option>
                   ))}
@@ -587,7 +589,7 @@ onClick={() => {
                         </div>
                         <div>
                           <h4 className="font-bold text-slate-900 text-sm">{c.name}</h4>
-                          <span className="text-[10px] text-slate-400">{c.leadsCount} lead(s) associé(s)</span>
+                          <span className="text-[10px] text-slate-400">{c.leadsCount} {t("lead.associated")}</span>
                         </div>
                       </div>
                       <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
@@ -601,30 +603,30 @@ onClick={() => {
 
                     <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-500 mt-4 border-t border-slate-100 pt-3">
                       <div>
-                        <span className="text-slate-400 block">Valeur du compte</span>
+                        <span className="text-slate-400 block">{t("lead.accountValue")}</span>
                         <span className="font-bold text-slate-800">{c.totalBudget.toLocaleString('fr-FR')} €</span>
                       </div>
                       <div>
-                        <span className="text-slate-400 block">Pays / Ville</span>
+                        <span className="text-slate-400 block">{t("lead.city")}</span>
                         <span className="font-semibold text-slate-800 truncate block">{c.city}, {c.country}</span>
                       </div>
                     </div>
 
                     <div className="mt-3 text-[11px] text-slate-500 flex items-center gap-1.5">
-                      <span className="text-slate-400">Commercial référent :</span>
+                      <span className="text-slate-400">{t("lead.referent")}</span>
                       <span className="font-semibold text-slate-700">{c.commercial}</span>
                     </div>
                   </div>
 
                   <div className="mt-5 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
                     <div className="flex items-center gap-1.5">
-                      <span className="text-[10px] text-slate-400">Score Moyen :</span>
+                      <span className="text-[10px] text-slate-400">{t("lead.avgScore")}</span>
                       <span className={`font-bold ${c.score >= 80 ? "text-emerald-600" : c.score >= 60 ? "text-amber-600" : "text-slate-500"}`}>
                         {c.score}/100
                       </span>
                     </div>
                     <span className="text-blue-600 font-bold flex items-center gap-1 hover:text-blue-500">
-                      Consulter la fiche <ChevronRight className="h-3.5 w-3.5" />
+                      {t("lead.viewCard")} <ChevronRight className="h-3.5 w-3.5" />
                     </span>
                   </div>
                 </div>
@@ -632,7 +634,7 @@ onClick={() => {
 
               {filteredCompanies.length === 0 && (
                 <div className="col-span-2 bg-white border border-slate-200 p-12 text-center text-slate-400 text-xs rounded-xl shadow-sm">
-                  Aucune entreprise ne correspond à votre recherche.
+                  {t("lead.noCompanyResults")}
                 </div>
               )}
             </div>
@@ -664,27 +666,27 @@ onClick={() => {
             <div className="bg-white border border-slate-200 p-6 rounded-xl shadow-sm">
               <h2 className="text-xl font-bold font-display text-slate-900 mb-2 flex items-center gap-2">
                 <User className="h-5.5 w-5.5 text-blue-600" />
-                Répertoire des Contacts CRM
+                {t("lead.title.contacts")}
               </h2>
               <p className="text-slate-500 text-xs leading-relaxed">
-                Retrouvez l'ensemble de vos correspondants et interlocuteurs d'affaires. Accédez en un clin d'œil à leurs coordonnées directes (Email, Mobile) et lancez des actions de suivi ou de planification d'appels directement depuis leur profil.
+                {t("lead.subtitle.contacts")}
               </p>
             </div>
 
             {/* Micro KPI Banner for Contacts */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="bg-white border border-slate-200 p-4 rounded-xl shadow-sm flex flex-col justify-between">
-                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Total Contacts</span>
+                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">{t("lead.totalContacts")}</span>
                 <span className="text-xl font-extrabold text-slate-900 mt-1">{leads.length}</span>
               </div>
               <div className="bg-white border border-slate-200 p-4 rounded-xl shadow-sm flex flex-col justify-between">
-                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Moyenne Score d'Affinités</span>
+                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">{t("lead.avgAffinity")}</span>
                 <span className="text-xl font-extrabold text-blue-600 mt-1">
                   {Math.round(leads.reduce((sum, l) => sum + l.score, 0) / (leads.length || 1))} %
                 </span>
               </div>
               <div className="bg-white border border-slate-200 p-4 rounded-xl shadow-sm flex flex-col justify-between">
-                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Ville Majeure</span>
+                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">{t("lead.mainCity")}</span>
                 <span className="text-xl font-extrabold text-emerald-600 mt-1">{mainCity}</span>
               </div>
             </div>
@@ -695,7 +697,7 @@ onClick={() => {
                 <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
                 <input
                   type="text"
-                  placeholder="Rechercher un contact, email, téléphone..."
+                  placeholder={t("lead.searchContactPlaceholder")}
                   value={leadSearchTerm}
                   onChange={(e) => setLeadSearchTerm(e.target.value)}
                   className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 pl-9 pr-4 text-slate-700 text-xs focus:outline-none focus:border-blue-500 focus:bg-white"
@@ -708,7 +710,7 @@ onClick={() => {
                   onChange={(e) => setLeadStatusFilter(e.target.value)}
                   className="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-600 font-semibold cursor-pointer text-xs focus:ring-0 w-full sm:w-auto focus:bg-white"
                 >
-                  <option value="all">Tous les statuts</option>
+                  <option value="all">{t("lead.allStatuses")}</option>
                   {Object.values(LeadStatus).map(st => (
                     <option key={st} value={st}>{st}</option>
                   ))}
@@ -773,7 +775,7 @@ onClick={() => {
                         }}
                         className="flex-1 text-center py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold rounded-lg transition-colors cursor-pointer text-xs"
                       >
-                        Consulter la Fiche
+                        {t("lead.viewRecord")}
                       </button>
                       <button 
                         onClick={() => {
@@ -785,7 +787,7 @@ onClick={() => {
                           }, 150);
                         }}
                         className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg transition-colors cursor-pointer"
-                        title="Appel rapide"
+                        title={t("lead.quickCall")}
                       >
                         <Phone className="h-4 w-4 text-blue-600" />
                       </button>
@@ -796,7 +798,7 @@ onClick={() => {
 
               {filteredContacts.length === 0 && (
                 <div className="col-span-2 bg-white border border-slate-200 p-12 text-center text-slate-400 text-xs rounded-xl shadow-sm">
-                  Aucun contact ne correspond à votre recherche.
+                  {t("lead.noContactResults")}
                 </div>
               )}
             </div>
@@ -822,10 +824,10 @@ onClick={() => {
             <div>
               <h2 className="text-xl font-bold font-display text-slate-900 mb-2 flex items-center gap-2">
                 <FileText className="h-5.5 w-5.5 text-blue-600" />
-                Consulter les Fiches Détaillées des Clients
+                {t("lead.title.leads")}
               </h2>
               <p className="text-slate-500 text-xs leading-relaxed max-w-2xl">
-                Sélectionnez un prospect qualifié dans la liste ci-dessous pour ouvrir son dossier d'affaires complet. Vous y trouverez l'analyse prédictive de l'intelligence artificielle (calcul de probabilité d'achat, détection des forces et points de vigilance), le journal de bord des appels téléphoniques et courriels, ainsi que la liste des pièces jointes et devis.
+                {t("lead.subtitle.leads")}
               </p>
             </div>
             {activeUser.role !== Role.COMMERCIAL && (
@@ -834,7 +836,7 @@ onClick={() => {
                 className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2.5 rounded-lg text-xs font-bold transition-all shadow-md shadow-blue-500/10 cursor-pointer flex-shrink-0"
               >
                 <Plus className="h-4 w-4" />
-                Créer / Importer un Lead
+                {t("lead.createImport")}
               </button>
             )}
           </div>
@@ -845,7 +847,7 @@ onClick={() => {
               <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
               <input
                 type="text"
-                placeholder="Rechercher une entreprise, un nom ou une ville..."
+                placeholder={t("lead.searchPlaceholder")}
                 value={leadSearchTerm}
                 onChange={(e) => setLeadSearchTerm(e.target.value)}
                 className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 pl-9 pr-4 text-slate-700 text-xs focus:outline-none focus:border-blue-500 focus:bg-white"
@@ -858,7 +860,7 @@ onClick={() => {
                 onChange={(e) => setLeadStatusFilter(e.target.value)}
                 className="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-600 font-semibold cursor-pointer text-xs focus:ring-0 w-full sm:w-auto focus:bg-white"
               >
-                <option value="all">Toutes les étapes du pipeline</option>
+                <option value="all">{t("lead.allStages")}</option>
                 {Object.values(LeadStatus).map(st => (
                   <option key={st} value={st}>{st}</option>
                 ))}
@@ -891,11 +893,11 @@ onClick={() => {
 
                   <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-500 mt-4 border-t border-slate-100 pt-3">
                     <div>
-                      <span className="text-slate-400 block">Budget estimé</span>
+                      <span className="text-slate-400 block">{t("lead.budget")}</span>
                       <span className="font-bold text-slate-800">{l.valeurEstimee.toLocaleString('fr-FR')} €</span>
                     </div>
                     <div>
-                      <span className="text-slate-400 block">Pays / Ville</span>
+                      <span className="text-slate-400 block">{t("lead.city")}</span>
                       <span className="font-semibold text-slate-800 truncate block">{l.ville}, {l.pays}</span>
                     </div>
                   </div>
@@ -903,13 +905,13 @@ onClick={() => {
 
                 <div className="mt-5 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
                   <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] text-slate-400">Score IA :</span>
+                    <span className="text-[10px] text-slate-400">{t("lead.score")}</span>
                     <span className={`font-bold ${l.score >= 80 ? "text-emerald-600" : l.score >= 60 ? "text-amber-600" : "text-slate-500"}`}>
                       {l.score}/100
                     </span>
                   </div>
                   <span className="text-blue-600 font-bold flex items-center gap-1 hover:text-blue-500">
-                    Consulter le dossier <ChevronRight className="h-3.5 w-3.5" />
+                    {t("lead.viewFile")} <ChevronRight className="h-3.5 w-3.5" />
                   </span>
                 </div>
               </div>
@@ -917,7 +919,7 @@ onClick={() => {
 
             {filteredLeads.length === 0 && (
               <div className="col-span-2 bg-white border border-slate-200 p-12 text-center text-slate-400 text-xs rounded-xl shadow-sm">
-                Aucun client ne correspond à votre recherche.
+                {t("lead.noResults")}
               </div>
             )}
           </div>
@@ -934,8 +936,8 @@ onClick={() => {
                 <X className="h-4 w-4" />
               </button>
               <div className="mb-4">
-                <h3 className="font-bold text-lg text-slate-900">Ajouter ou Importer des Leads</h3>
-                <p className="text-slate-500 text-[10px]">Configurez un nouveau prospect ou importez une liste de leads par lots.</p>
+                <h3 className="font-bold text-lg text-slate-900">{t("lead.addImportTitle")}</h3>
+                <p className="text-slate-500 text-[10px]">{t("lead.addImportSubtitle")}</p>
               </div>
               <LeadForm 
                 onAddLead={(newLead) => {
@@ -962,7 +964,7 @@ onClick={() => {
           id="back-to-pipeline-btn"
         >
           <ChevronLeft className="h-4 w-4" />
-          Retour aux opportunités
+          {t("lead.backOpportunities")}
         </button>
 
         {/* Stepper Status Progression */}

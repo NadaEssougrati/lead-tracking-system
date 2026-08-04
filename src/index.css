@@ -44,3 +44,98 @@ h1, h2, h3, h4, .font-display {
   font-family: var(--font-display);
 }
 
+/* Premium dark mode contrast overrides */
+.dark {
+  color-scheme: dark;
+  
+  .bg-white {
+    background-color: #0f172a !important; /* slate-900 */
+  }
+  .bg-slate-50 {
+    background-color: #020617 !important; /* slate-950 */
+  }
+  .bg-slate-100 {
+    background-color: #1e293b !important; /* slate-800 */
+  }
+  .bg-slate-100\/50 {
+    background-color: rgba(30, 41, 59, 0.4) !important;
+  }
+  
+  .border-slate-100 {
+    border-color: #1e293b !important; /* slate-800 */
+  }
+  .border-slate-200 {
+    border-color: #334155 !important; /* slate-700 */
+  }
+  .border-slate-200\/60 {
+    border-color: rgba(51, 65, 85, 0.5) !important;
+  }
+  
+  .text-slate-900 {
+    color: #f8fafc !important; /* slate-50 */
+  }
+  .text-slate-850 {
+    color: #f1f5f9 !important; /* slate-100 */
+  }
+  .text-slate-800 {
+    color: #f1f5f9 !important; /* slate-100 */
+  }
+  .text-slate-750 {
+    color: #cbd5e1 !important; /* slate-300 */
+  }
+  .text-slate-700 {
+    color: #cbd5e1 !important; /* slate-300 */
+  }
+  .text-slate-600 {
+    color: #94a3b8 !important; /* slate-400 */
+  }
+  .text-slate-500 {
+    color: #94a3b8 !important; /* slate-400 */
+  }
+  .text-slate-400 {
+    color: #64748b !important; /* slate-500 */
+  }
+
+  input, select, textarea {
+    background-color: #1e293b !important; /* slate-800 */
+    border-color: #334155 !important; /* slate-700 */
+    color: #f8fafc !important;
+  }
+  input::placeholder, textarea::placeholder {
+    color: #64748b !important;
+  }
+  input:focus, select:focus, textarea:focus {
+    border-color: #3b82f6 !important;
+  }
+  
+  .hover\:bg-slate-50\/50:hover {
+    background-color: rgba(30, 41, 59, 0.35) !important;
+  }
+  .hover\:bg-slate-50:hover {
+    background-color: #1e293b !important;
+  }
+  .hover\:bg-slate-100:hover {
+    background-color: #334155 !important;
+  }
+  
+  .bg-emerald-50 {
+    background-color: rgba(6, 95, 70, 0.25) !important;
+    color: #34d399 !important;
+    border-color: rgba(16, 185, 129, 0.25) !important;
+  }
+  .bg-amber-50 {
+    background-color: rgba(146, 64, 14, 0.25) !important;
+    color: #fbbf24 !important;
+    border-color: rgba(245, 158, 11, 0.25) !important;
+  }
+  
+  #invoice-simulation {
+    background-color: #0f172a !important;
+    color: #f1f5f9 !important;
+    border-color: #334155 !important;
+  }
+  #invoice-simulation .border-slate-200 {
+    border-color: #334155 !important;
+  }
+}
+
