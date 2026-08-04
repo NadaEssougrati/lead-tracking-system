@@ -1,20 +1,42 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
-</div>
+# Lead Tracking System (LeadFlow)
 
-# Run and deploy your AI Studio app
+This project is a unified CRM application built with a React frontend and an Express backend, using Prisma ORM with PostgreSQL.
 
-This contains everything you need to run your app locally.
+## Local Setup
 
-View your app in AI Studio: https://ai.studio/apps/c72fa827-4632-4b3a-b551-1015e7d4e34e
+### 1. Prerequisites
+- **Node.js** (v18+)
+- **Docker** (for running PostgreSQL locally)
 
-## Run Locally
+### 2. Configure Environment
+Copy the example environment file:
+```bash
+cp .env.example .env
+```
+Update any variables in `.env` as needed (e.g., database connection credentials).
 
-**Prerequisites:**  Node.js
+### 3. Spin up PostgreSQL
+Run the Docker Compose configuration to start your local PostgreSQL instance:
+```bash
+docker compose up -d
+```
 
+### 4. Install Dependencies
+```bash
+npm install
+```
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+### 5. Generate Prisma Client & Migrate
+Run the migrations to create the database schema and seed the database:
+```bash
+npx prisma generate
+npx prisma migrate dev
+npm run seed
+```
+
+### 6. Start Development Server
+This runs the integrated Express server, which serves both the API endpoints and the React frontend (via Vite dev middleware) on port `5000`:
+```bash
+npm run dev
+```
+Open [http://localhost:5000](http://localhost:5000) in your browser.
