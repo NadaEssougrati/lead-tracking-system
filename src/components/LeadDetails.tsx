@@ -99,6 +99,42 @@ export default function LeadDetails({
   onAddLead = () => {}
 }: LeadDetailsProps) {
   const { t } = usePreferences();
+
+  const translateStatus = (status: LeadStatus) => {
+    switch (status) {
+      case LeadStatus.NEW: return t("kanban.nouveau");
+      case LeadStatus.CONTACTED: return t("kanban.contacte");
+      case LeadStatus.QUALIFIED: return t("kanban.qualifie");
+      case LeadStatus.PROPOSAL: return t("kanban.proposition");
+      case LeadStatus.NEGOTIATION: return t("kanban.negociation");
+      case LeadStatus.WON: return t("kanban.gagne");
+      case LeadStatus.LOST: return t("kanban.perdu");
+      case LeadStatus.CLOSED: return t("kanban.ferme");
+      default: return status;
+    }
+  };
+
+  const translatePriority = (priority: LeadPriority) => {
+    switch (priority) {
+      case LeadPriority.LOW: return t("leadform.low");
+      case LeadPriority.MEDIUM: return t("leadform.medium");
+      case LeadPriority.HIGH: return t("leadform.high");
+      default: return priority;
+    }
+  };
+
+  const translateSource = (source: string) => {
+    switch (source) {
+      case "Site web": return t("source.website");
+      case "Réseaux sociaux": return t("source.social");
+      case "Recommandation": return t("source.referral");
+      case "Emailing": return t("source.email");
+      case "Salon professionnel": return t("source.salon");
+      case "Appel téléphonique": return t("source.phone");
+      default: return source;
+    }
+  };
+
   // Search & Filter state for the lead selector
   const [leadSearchTerm, setLeadSearchTerm] = useState("");
   const [leadStatusFilter, setLeadStatusFilter] = useState("all");
@@ -493,7 +529,7 @@ const avgScore = Math.round(companyLeads.reduce((sum, cl) => sum + cl.score, 0) 
           priority: mainLead.priorite,
           status: mainLead.statut,
           score: avgScore,
-          commercial: users.find(u => u.id === mainLead.commercialId)?.nom || "Non assigné"
+          commercial: users.find(u => u.id === mainLead.commercialId)?.nom || t("lead.unassigned")
         };
       });
 
@@ -517,10 +553,10 @@ const avgScore = Math.round(companyLeads.reduce((sum, cl) => sum + cl.score, 0) 
             <div className="bg-white border border-slate-200 p-6 rounded-xl shadow-sm">
               <h2 className="text-xl font-bold font-display text-slate-900 mb-2 flex items-center gap-2">
                 <Building className="h-5.5 w-5.5 text-blue-600" />
-                Répertoire des Entreprises Clientes
+                {t("lead.title.companies")}
               </h2>
               <p className="text-slate-500 text-xs leading-relaxed">
-                Consultez le catalogue global de vos comptes d'entreprises. Cette interface regroupe automatiquement tous les prospects associés à chaque organisation, consolide leurs budgets opportunités cumulés et calcule l'indice de maturité moyen calculé en temps réel par l'intelligence artificielle.
+                {t("lead.subtitle.companies")}
               </p>
             </div>
 
@@ -597,7 +633,7 @@ onClick={() => {
                           ? "bg-emerald-50 text-emerald-700 border border-emerald-200" 
                           : "bg-blue-50 text-blue-700 border border-blue-200"
                       }`}>
-                        {c.status}
+                        {translateStatus(c.status)}
                       </span>
                     </div>
 
@@ -887,7 +923,7 @@ onClick={() => {
                         ? "bg-emerald-50 text-emerald-700 border border-emerald-200" 
                         : "bg-blue-50 text-blue-700 border border-blue-200"
                     }`}>
-                      {l.statut}
+                      {translateStatus(l.statut)}
                     </span>
                   </div>
 
@@ -992,7 +1028,7 @@ onClick={() => {
                         : "bg-slate-50 text-slate-400 border border-slate-100"
                     }`}
                   >
-                    {step}
+                    {translateStatus(step)}
                   </button>
                   {idx < STEPS.length - 1 && (
                     <div className={`h-0.5 w-6 ${isPast ? "bg-slate-200" : "bg-slate-100"}`}></div>
@@ -1082,49 +1118,49 @@ onClick={() => {
           {/* Section: Enterprise Info & Commercial Details */}
           <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
             <h3 className="font-bold text-sm text-slate-800 mb-4 border-b border-slate-100 pb-2.5 uppercase tracking-wide">
-              Fiche Signalétique & Caractéristiques
+              {t("lead.recordTitle")}
             </h3>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs">
               
               {/* Box 1: Company details */}
               <div className="space-y-3">
-                <p className="text-slate-500 uppercase text-[10px] tracking-wider font-semibold">Coordonnées de l'entreprise</p>
+                <p className="text-slate-500 uppercase text-[10px] tracking-wider font-semibold">{t("lead.companyInfo")}</p>
                 
                 <div className="flex items-center gap-2.5">
-                  <span className="text-slate-400 font-medium w-24">Société :</span>
+                  <span className="text-slate-400 font-medium w-24">{t("lead.company")}</span>
                   <span className="text-slate-900 font-semibold">{lead.societe}</span>
                 </div>
                 <div className="flex items-center gap-2.5">
-                  <span className="text-slate-400 font-medium w-24">Contact :</span>
+                  <span className="text-slate-400 font-medium w-24">{t("lead.contact")}</span>
                   <span className="text-slate-900 font-semibold">{lead.prenom} {lead.nom}</span>
                 </div>
                 <div className="flex items-center gap-2.5">
-                  <span className="text-slate-400 font-medium w-24">Téléphone :</span>
+                  <span className="text-slate-400 font-medium w-24">{t("lead.phone")}</span>
                   <span className="text-slate-700">{lead.telephone}</span>
                 </div>
                 <div className="flex items-center gap-2.5">
-                  <span className="text-slate-400 font-medium w-24">Email :</span>
+                  <span className="text-slate-400 font-medium w-24">{t("login.email")} :</span>
                   <span className="text-slate-700 truncate">{lead.email}</span>
                 </div>
                 <div className="flex items-start gap-2.5">
-                  <span className="text-slate-400 font-medium w-24">Adresse :</span>
+                  <span className="text-slate-400 font-medium w-24">{t("lead.address")}</span>
                   <span className="text-slate-700 flex-1">{lead.adresse}, {lead.ville}, {lead.pays}</span>
                 </div>
               </div>
 
               {/* Box 2: Commercial details */}
               <div className="space-y-3 border-t md:border-t-0 md:border-l border-slate-100 md:pl-6 pt-4 md:pt-0">
-                <p className="text-slate-500 uppercase text-[10px] tracking-wider font-semibold">Paramètres de l'opportunité</p>
+                <p className="text-slate-500 uppercase text-[10px] tracking-wider font-semibold">{t("lead.oppSettings")}</p>
                 
                 <div className="flex items-center gap-2.5">
-                  <span className="text-slate-400 font-medium w-36">Budget estimé :</span>
+                  <span className="text-slate-400 font-medium w-36">{t("lead.estimatedBudget")}</span>
                   <span className="text-emerald-600 font-bold text-sm">
                     {lead.valeurEstimee.toLocaleString('fr-FR')} €
                   </span>
                 </div>
                 <div className="flex items-center gap-2.5">
-                  <span className="text-slate-400 font-medium w-36">Priorité :</span>
+                  <span className="text-slate-400 font-medium w-36">{t("lead.priority")} :</span>
                   <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                     lead.priorite === LeadPriority.HIGH 
                       ? "bg-rose-55 text-rose-700 border border-rose-200" 
@@ -1132,31 +1168,31 @@ onClick={() => {
                       ? "bg-amber-55 text-amber-700 border border-amber-200" 
                       : "bg-blue-55 text-blue-700 border border-blue-200"
                   }`}>
-                    {lead.priorite}
+                    {translatePriority(lead.priorite)}
                   </span>
                 </div>
                 <div className="flex items-center gap-2.5">
-                  <span className="text-slate-400 font-medium w-36">Source :</span>
-                  <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded border border-slate-200/60 font-semibold">{lead.source}</span>
+                  <span className="text-slate-400 font-medium w-36">{t("lead.source")} :</span>
+                  <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded border border-slate-200/60 font-semibold">{translateSource(lead.source)}</span>
                 </div>
 
                 {/* Reassignment Control based on RBAC */}
                 <div className="flex items-center gap-2.5 pt-1.5">
-                  <span className="text-slate-400 font-medium w-36">Commercial assigné :</span>
+                  <span className="text-slate-400 font-medium w-36">{t("lead.assignedCommercial")}</span>
                   {canReassign ? (
                     <select
                       value={lead.commercialId || ""}
                       onChange={(e) => onUpdateLead({ ...lead, commercialId: e.target.value })}
                       className="bg-slate-50 text-xs text-slate-700 border border-slate-200 rounded p-1 focus:ring-1 focus:ring-blue-500 cursor-pointer"
                     >
-<option value="">-- Non attribué --</option>
+                      <option value="">-- {t("lead.unassigned")} --</option>
                       {users.filter(u => u.role === Role.COMMERCIAL).map((u) => (
                         <option key={u.id} value={u.id}>{u.nom}</option>
                       ))}
                     </select>
                   ) : (
                     <span className="font-semibold text-slate-700">
-                      {users.find(u => u.id === lead.commercialId)?.nom || "Non assigné"}
+                      {users.find(u => u.id === lead.commercialId)?.nom || t("lead.unassigned")}
                     </span>
                   )}
                 </div>
