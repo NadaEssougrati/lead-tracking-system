@@ -186,7 +186,7 @@ const filterValues = () => {
   const doneCount = visibleTasks.filter(t => t.statut === TaskStatus.DONE).length;
 
   return (
-    <div className="flex-1 bg-slate-50 p-6 overflow-y-auto max-h-[calc(100vh-4rem)] text-slate-850 dark:bg-slate-950" id="global-tasks-root">
+    <div className="flex-1 bg-slate-50 p-6 overflow-y-auto max-h-screen text-slate-850 dark:bg-slate-950" id="global-tasks-root">
       <div className="max-w-7xl mx-auto w-full space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <div className="bg-white border border-slate-200 p-4 rounded-xl flex items-center justify-between shadow-sm">

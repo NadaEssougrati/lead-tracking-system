@@ -202,7 +202,7 @@ export default function ActivitiesLog({
   const totalExchanges = callsCount + emailsCount + meetingsCount;
 
   return (
-    <div className="flex-1 bg-slate-50 p-6 overflow-y-auto max-h-[calc(100vh-4rem)] text-slate-850 dark:bg-slate-950" id="activities-log-root">
+    <div className="flex-1 bg-slate-50 p-6 overflow-y-auto max-h-screen text-slate-850 dark:bg-slate-950" id="activities-log-root">
       <div className="max-w-7xl mx-auto w-full space-y-6">
       
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">

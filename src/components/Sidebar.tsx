@@ -12,10 +12,12 @@ import {
   BarChart3, 
   FileText, 
   Settings,
-  Target
+  Target,
+  LogOut
 } from "lucide-react";
 import { Role, User as UserType } from "../types";
 import { usePreferences } from "../AppPreferences";
+import { setAccessToken } from "../api";
 
 export type SidebarTab = 
   | "dashboard"
@@ -50,6 +52,11 @@ export default function Sidebar({
   users,
 }: SidebarProps) {
   const { t } = usePreferences();
+
+  const handleLogout = () => {
+    setAccessToken(null);
+    window.location.reload();
+  };
 
   const mainItem = { id: "dashboard" as SidebarTab, labelKey: "nav.dashboard", icon: Home };
 
@@ -126,7 +133,7 @@ export default function Sidebar({
         <span className="font-bold text-xs text-white tracking-wide uppercase">LeadFlow CRM</span>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-2 py-4 select-none">
+      <div className="flex-1 overflow-y-auto px-2 py-4 select-none animate-fade-in">
         <button
           onClick={() => onTabChange(mainItem.id)}
           className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-xs font-semibold transition-all duration-150 mb-4 cursor-pointer ${
@@ -167,6 +174,23 @@ export default function Sidebar({
             </div>
           </div>
         ))}
+      </div>
+
+      {/* User Identity Info & Logout Action merged here */}
+      <div className="p-4 border-t border-blue-950 bg-[#070e1b] flex flex-col gap-3 flex-shrink-0">
+        <div className="flex items-center gap-2.5 px-1">
+          <div className="h-7 w-7 rounded-full bg-blue-600/10 border border-blue-500/20 flex items-center justify-center text-xs font-bold text-blue-300 select-none">
+            {activeUser.nom.split(" ").map((n) => n[0]).join("")}
+          </div>
+          <span className="text-xs font-semibold text-slate-200 truncate select-none">{activeUser.nom}</span>
+        </div>
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-rose-500/10 text-rose-200 hover:bg-rose-500/20 transition-colors text-xs font-bold cursor-pointer"
+        >
+          <LogOut className="h-3.5 w-3.5" />
+          <span>{t("nav.logout")}</span>
+        </button>
       </div>
     </aside>
   );

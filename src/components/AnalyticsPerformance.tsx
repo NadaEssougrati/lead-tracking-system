@@ -133,7 +133,7 @@ export default function AnalyticsPerformance({ leads, users }: AnalyticsPerforma
   const estimatedSignValue = activeLeads.reduce((acc, curr) => acc + curr.valeurEstimee, 0);
 
   return (
-    <div className="flex-1 overflow-y-auto p-6 space-y-6 max-h-[calc(100vh-4rem)] bg-slate-50 dark:bg-slate-950" id="analytics-performance-root">
+    <div className="flex-1 overflow-y-auto p-6 space-y-6 max-h-screen bg-slate-50 dark:bg-slate-950" id="analytics-performance-root">
       <div className="max-w-7xl mx-auto w-full space-y-6">
         
         {/* Filters */}

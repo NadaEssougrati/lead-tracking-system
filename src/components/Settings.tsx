@@ -103,7 +103,7 @@ export default function Settings({ activeUser, onUpdateProfile, onUpdatePassword
   ];
 
   return (
-    <div className="flex-1 bg-slate-50 p-6 overflow-y-auto max-h-[calc(100vh-4rem)] text-slate-850 dark:bg-slate-950" id="settings-root">
+    <div className="flex-1 bg-slate-50 p-6 overflow-y-auto max-h-screen text-slate-850 dark:bg-slate-950" id="settings-root">
       <div className="max-w-7xl mx-auto w-full">
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

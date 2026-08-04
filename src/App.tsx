@@ -20,7 +20,6 @@ import {
 import { api, login, setAccessToken } from "./api";
 
 import Sidebar, { SidebarTab } from "./components/Sidebar";
-import Header from "./components/Header";
 import DashboardStats from "./components/DashboardStats";
 import PipelineKanban from "./components/PipelineKanban";
 import LeadDetails from "./components/LeadDetails";
@@ -374,15 +373,10 @@ return (
 
       {/* 2. Main Workstation */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Header Top Bar */}
-        <Header 
-          activeUser={activeUser}
-        />
-
         {/* Dynamic workspace router */}
         <main className="flex-1 overflow-hidden flex flex-col bg-slate-50 dark:bg-slate-950">
           {activeTab === "dashboard" && (
-            <div className="flex-1 overflow-y-auto p-6 max-h-[calc(100vh-4rem)] bg-slate-50 dark:bg-slate-950">
+            <div className="flex-1 overflow-y-auto p-6 max-h-screen bg-slate-50 dark:bg-slate-950">
               <div className="max-w-7xl mx-auto w-full">
                 <DashboardStats 
                   leads={filteredLeadsForSearch} 

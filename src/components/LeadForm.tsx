@@ -69,7 +69,7 @@ export default function LeadForm({ onAddLead, commercials }: LeadFormProps) {
   };
 
   return (
-    <div className="flex-1 bg-slate-50 p-6 overflow-y-auto max-h-[calc(100vh-4rem)] text-slate-850" id="lead-form-root">
+    <div className="flex-1 bg-slate-50 p-6 overflow-y-auto max-h-screen text-slate-850" id="lead-form-root">
       
       <div className="bg-white border border-slate-200 rounded-xl p-6 max-w-3xl shadow-sm">
         <h3 className="font-bold text-sm text-slate-800 mb-6 border-b border-slate-100 pb-3 flex items-center gap-2">
