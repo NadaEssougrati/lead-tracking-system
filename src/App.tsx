@@ -34,8 +34,8 @@ import { usePreferences } from "./AppPreferences";
 
 export default function App() {
   const { t } = usePreferences();
-  const [email, setEmail] = useState("admin@leedpro.com");
-  const [motDePasse, setMotDePasse] = useState("ChangeMe123!");
+  const [email, setEmail] = useState("");
+  const [motDePasse, setMotDePasse] = useState("");
   const [authError, setAuthError] = useState("");
   const [isAuthenticating, setIsAuthenticating] = useState(Boolean(localStorage.getItem("accessToken")));
   const [isLoading, setIsLoading] = useState(Boolean(localStorage.getItem("accessToken")));

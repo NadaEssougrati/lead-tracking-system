@@ -14,7 +14,8 @@ import {
   Plus, 
   Mail,
   Phone,
-  Building
+  Building,
+  UserRound
 } from "lucide-react";
 import { User, Role } from "../types";
 import { usePreferences } from "../AppPreferences";
@@ -122,8 +123,8 @@ alert(`${t("team.successMessage")} ${nom} (${role}) ${t("team.successMessage2")}
                   {users.map((u) => (
                     <tr key={u.id} className="hover:bg-slate-50/50 transition-colors">
                       <td className="py-3 font-semibold text-slate-800 flex items-center gap-2">
-                        <div className="h-6 w-6 rounded-full bg-slate-100 flex items-center justify-center font-bold text-[9px] text-slate-600">
-                          {u.nom.split(" ").map(n => n[0]).join("")}
+                        <div className="h-6 w-6 rounded-full bg-slate-100 flex items-center justify-center text-slate-500">
+                          <UserRound className="h-3.5 w-3.5" />
                         </div>
                         {u.nom}
                       </td>

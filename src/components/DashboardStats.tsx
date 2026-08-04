@@ -27,7 +27,8 @@ import {
   Mail,
   Calendar,
   MessageSquare,
-  ListFilter
+  ListFilter,
+  UserRound
 } from "lucide-react";
 import { 
   ResponsiveContainer, 
@@ -692,8 +693,8 @@ export default function DashboardStats({ leads, users, activities = [], onSelect
                 {leaderboard.map((comm) => (
                   <tr key={comm.id} className="hover:bg-slate-50/50 transition-colors">
                     <td className="py-3 flex items-center gap-2.5">
-                      <div className="h-6 w-6 rounded-full bg-slate-100 text-[10px] font-bold text-slate-700 flex items-center justify-center border border-slate-200">
-                        {comm.nom.split(" ").map(n => n[0]).join("")}
+                      <div className="h-6 w-6 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center border border-slate-200">
+                        <UserRound className="h-3.5 w-3.5" />
                       </div>
                       <div>
                         <span className="font-bold text-slate-800">{comm.nom}</span>

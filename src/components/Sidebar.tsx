@@ -182,8 +182,8 @@ export default function Sidebar({
       <div className="p-4 border-t border-blue-950 bg-[#070e1b] flex flex-col gap-3 flex-shrink-0">
         <div className="flex items-center justify-between px-1 gap-2">
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="h-7 w-7 rounded-full bg-blue-600/10 border border-blue-500/20 flex items-center justify-center text-xs font-bold text-blue-300 select-none flex-shrink-0">
-              {activeUser.nom.split(" ").map((n) => n[0]).join("")}
+            <div className="h-7 w-7 rounded-full bg-blue-600/10 border border-blue-500/20 flex items-center justify-center text-blue-300 select-none flex-shrink-0">
+              <User className="h-4 w-4 text-blue-300" />
             </div>
             <span className="text-xs font-semibold text-slate-200 truncate select-none">{activeUser.nom}</span>
           </div>
