@@ -377,24 +377,20 @@ return (
         {/* Header Top Bar */}
         <Header 
           activeUser={activeUser}
-          notifications={notifications}
-          onMarkNotificationAsRead={handleMarkNotificationAsRead}
-          onClearNotifications={handleClearNotifications}
-          searchTerm={activeTab === "dashboard" || activeTab === "opportunities" ? searchTerm : undefined as any}
-          onSearchChange={setSearchTerm}
-          currentPageTitle={getPageTitle()}
         />
 
         {/* Dynamic workspace router */}
-        <main className="flex-1 overflow-hidden flex flex-col">
+        <main className="flex-1 overflow-hidden flex flex-col bg-slate-50 dark:bg-slate-950">
           {activeTab === "dashboard" && (
-            <div className="flex-1 overflow-y-auto p-6 max-h-[calc(100vh-4rem)]">
-              <DashboardStats 
-                leads={filteredLeadsForSearch} 
-                users={users}
-                activities={activities}
-                onSelectLead={handleSelectLead} 
-              />
+            <div className="flex-1 overflow-y-auto p-6 max-h-[calc(100vh-4rem)] bg-slate-50 dark:bg-slate-950">
+              <div className="max-w-7xl mx-auto w-full">
+                <DashboardStats 
+                  leads={filteredLeadsForSearch} 
+                  users={users}
+                  activities={activities}
+                  onSelectLead={handleSelectLead} 
+                />
+              </div>
             </div>
           )}
 

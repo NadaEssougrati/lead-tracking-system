@@ -12,7 +12,8 @@ import {
   TrendingUp, 
   User, 
   FolderPlus,
-  AlertCircle
+  AlertCircle,
+  Search
 } from "lucide-react";
 import { Lead, LeadStatus, Role, LeadPriority } from "../types";
 
@@ -41,12 +42,22 @@ export default function PipelineKanban({
   userRole,
   commercialId
 }: PipelineKanbanProps) {
+  const [searchQuery, setSearchQuery] = React.useState("");
 
-  // 1. Filter leads based on user permissions
+  // 1. Filter leads based on user permissions & search query
   // matrix: "Consulter ses leads attribués uniquement" for Commercial!
   const filteredLeads = leads.filter((lead) => {
     if (userRole === Role.COMMERCIAL) {
-      return lead.commercialId === commercialId;
+      if (lead.commercialId !== commercialId) return false;
+    }
+    if (searchQuery.trim() !== "") {
+      const query = searchQuery.toLowerCase();
+      const nomMatch = lead.nom?.toLowerCase().includes(query);
+      const prenomMatch = lead.prenom?.toLowerCase().includes(query);
+      const emailMatch = lead.email?.toLowerCase().includes(query);
+      const societeMatch = lead.societe?.toLowerCase().includes(query);
+      const notesMatch = lead.notes?.toLowerCase().includes(query);
+      return nomMatch || prenomMatch || emailMatch || societeMatch || notesMatch;
     }
     return true; // admin, manager, marketing see all
   });
@@ -95,12 +106,26 @@ export default function PipelineKanban({
       
       {/* Header Info */}
       <div className="mb-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
+        <div className="flex-1 min-w-[200px]">
           <p className="text-xs text-slate-500">
             {userRole === Role.COMMERCIAL 
               ? "Affichage de vos opportunités attribuées uniquement (Filtre Commercial actif)." 
               : "Affichage de toutes les opportunités du CRM (Accès Superviseur actif)."}
           </p>
+        </div>
+
+        {/* Search Bar */}
+        <div className="relative w-full md:w-72">
+          <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
+            <Search className="h-4 w-4" />
+          </span>
+          <input
+            type="text"
+            placeholder="Rechercher des opportunités..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full bg-white text-slate-900 placeholder-slate-400 text-xs rounded-lg pl-9 pr-4 py-1.5 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-xs"
+          />
         </div>
         
         {userRole === Role.MARKETING && (

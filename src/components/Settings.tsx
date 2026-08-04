@@ -103,16 +103,8 @@ export default function Settings({ activeUser, onUpdateProfile, onUpdatePassword
   ];
 
   return (
-    <div className="flex-1 bg-slate-50 p-6 overflow-y-auto max-h-[calc(100vh-4rem)] text-slate-850" id="settings-root">
-      
-      {/* Page Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-extrabold text-slate-950 flex items-center gap-2">
-          <Palette className="h-6 w-6 text-blue-600" />
-          {t("settings.title")}
-        </h1>
-        <p className="text-xs text-slate-500 mt-1">{t("settings.subtitle")}</p>
-      </div>
+    <div className="flex-1 bg-slate-50 p-6 overflow-y-auto max-h-[calc(100vh-4rem)] text-slate-850 dark:bg-slate-950" id="settings-root">
+      <div className="max-w-7xl mx-auto w-full">
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
@@ -311,6 +303,7 @@ export default function Settings({ activeUser, onUpdateProfile, onUpdatePassword
           <CheckCircle2 className="h-4 w-4" /> {prefsFeedback}
         </p>
       )}
+      </div>
     </div>
   );
 }

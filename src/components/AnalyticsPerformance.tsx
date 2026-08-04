@@ -133,37 +133,27 @@ export default function AnalyticsPerformance({ leads, users }: AnalyticsPerforma
   const estimatedSignValue = activeLeads.reduce((acc, curr) => acc + curr.valeurEstimee, 0);
 
   return (
-    <div className="flex-1 overflow-y-auto p-6 space-y-6 max-h-[calc(100vh-4rem)] bg-slate-50" id="analytics-performance-root">
-      
-      {/* Page Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-<h1 className="text-2xl font-extrabold text-slate-950 flex items-center gap-2">
-            <Sparkles className="h-6 w-6 text-blue-600 animate-pulse" />
-            {t("analytics.title")}
-          </h1>
-          <p className="text-xs text-slate-500 mt-1">
-            {t("analytics.subtitle")}
-          </p>
-        </div>
-
+    <div className="flex-1 overflow-y-auto p-6 space-y-6 max-h-[calc(100vh-4rem)] bg-slate-50 dark:bg-slate-950" id="analytics-performance-root">
+      <div className="max-w-7xl mx-auto w-full space-y-6">
+        
         {/* Filters */}
-        <div className="flex items-center gap-3 bg-white p-2 rounded-xl border border-slate-200 shadow-sm text-xs">
-          <span className="font-bold text-slate-700 flex items-center gap-1">
-            <Sliders className="h-3.5 w-3.5 text-blue-600" /> {t("analytics.segmentBy")}
-          </span>
-          <select
-            value={selectedSource}
-            onChange={(e) => setSelectedSource(e.target.value)}
-            className="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-slate-700 font-semibold cursor-pointer focus:outline-none focus:border-blue-500"
-          >
-            <option value="all">{t("analytics.allChannels")}</option>
-            {Object.values(LeadSource).map(src => (
-              <option key={src} value={src}>{src}</option>
-            ))}
-          </select>
+        <div className="flex justify-end">
+          <div className="flex items-center gap-3 bg-white p-2 rounded-xl border border-slate-200 shadow-sm text-xs dark:bg-slate-900 dark:border-slate-800">
+            <span className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+              <Sliders className="h-3.5 w-3.5 text-blue-600" /> {t("analytics.segmentBy")}
+            </span>
+            <select
+              value={selectedSource}
+              onChange={(e) => setSelectedSource(e.target.value)}
+              className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-slate-700 dark:text-slate-250 font-semibold cursor-pointer focus:outline-none focus:border-blue-500"
+            >
+              <option value="all">{t("analytics.allChannels")}</option>
+              {Object.values(LeadSource).map(src => (
+                <option key={src} value={src}>{src}</option>
+              ))}
+            </select>
+          </div>
         </div>
-      </div>
 
       {/* KPI Cards Row */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -394,7 +384,7 @@ export default function AnalyticsPerformance({ leads, users }: AnalyticsPerforma
           </table>
         </div>
       </div>
-
+      </div>
     </div>
   );
 }

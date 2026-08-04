@@ -43,7 +43,8 @@ import {
   LeadStatus, 
   LeadPriority, 
   ActivityType, 
-  Document 
+  Document,
+  TaskStatus
 } from "../types";
 import LeadForm from "./LeadForm";
 
@@ -507,7 +508,7 @@ const avgScore = Math.round(companyLeads.reduce((sum, cl) => sum + cl.score, 0) 
       const avgPortfolioValue = Math.round(totalPortfolioValue / (uniqueCompanies.length || 1));
 
       return (
-        <div className="flex-1 bg-slate-50 p-6 overflow-y-auto max-h-[calc(100vh-4rem)] text-slate-850" id="companies-directory-root">
+        <div className="flex-1 bg-slate-50 dark:bg-slate-950 p-6 overflow-y-auto max-h-[calc(100vh-4rem)] text-slate-850" id="companies-directory-root">
           <div className="max-w-4xl mx-auto space-y-6">
             
             {/* Header section */}
@@ -656,7 +657,7 @@ onClick={() => {
       const mainCity = uniqueCities.length > 0 ? uniqueCities[0] : "Casablanca";
 
       return (
-        <div className="flex-1 bg-slate-50 p-6 overflow-y-auto max-h-[calc(100vh-4rem)] text-slate-850" id="contacts-directory-root">
+        <div className="flex-1 bg-slate-50 dark:bg-slate-950 p-6 overflow-y-auto max-h-[calc(100vh-4rem)] text-slate-850" id="contacts-directory-root">
           <div className="max-w-4xl mx-auto space-y-6">
             
             {/* Header section */}
@@ -815,7 +816,7 @@ onClick={() => {
     });
 
     return (
-      <div className="flex-1 bg-slate-50 p-6 overflow-y-auto max-h-[calc(100vh-4rem)] text-slate-850" id="lead-selector-root">
+      <div className="flex-1 bg-slate-50 dark:bg-slate-950 p-6 overflow-y-auto max-h-[calc(100vh-4rem)] text-slate-850" id="lead-selector-root">
         <div className="max-w-4xl mx-auto space-y-6">
           <div className="bg-white border border-slate-200 p-6 rounded-xl shadow-sm flex flex-col md:flex-row justify-between md:items-center gap-4">
             <div>
@@ -951,7 +952,8 @@ onClick={() => {
   }
 
   return (
-    <div className="flex-1 bg-slate-50 p-6 overflow-y-auto max-h-[calc(100vh-4rem)] text-slate-800" id="lead-details-root">
+    <div className="flex-1 bg-slate-50 p-6 overflow-y-auto max-h-[calc(100vh-4rem)] text-slate-800 dark:bg-slate-950" id="lead-details-root">
+      <div className="max-w-7xl mx-auto w-full space-y-6">
       {/* Back button & Stepper Header */}
       <div className="flex flex-col gap-4 mb-6">
         <button
@@ -1472,7 +1474,7 @@ onClick={() => {
                           {onUpdateTask && (
                             <button
                               type="button"
-                              onClick={() => onUpdateTask(t.id, { statut: isDone ? "À faire" : "Terminée" })}
+                              onClick={() => onUpdateTask(t.id, { statut: isDone ? TaskStatus.TODO : TaskStatus.DONE })}
                               className="text-blue-600 hover:text-blue-800 text-[10px] font-semibold"
                             >
                               {isDone ? "Réouvrir" : "Marquer comme terminée"}
@@ -1852,7 +1854,7 @@ onClick={() => {
           </div>
         </div>
       )}
-
+      </div>
     </div>
   );
 }

@@ -84,7 +84,8 @@ alert(`${t("team.successMessage")} ${nom} (${role}) ${t("team.successMessage2")}
   };
 
   return (
-    <div className="flex-1 bg-slate-50 p-6 overflow-y-auto max-h-[calc(100vh-4rem)] text-slate-850" id="user-management-root">
+    <div className="flex-1 bg-slate-50 p-6 overflow-y-auto max-h-[calc(100vh-4rem)] text-slate-850 dark:bg-slate-950" id="user-management-root">
+      <div className="max-w-7xl mx-auto w-full">
       
       {!isAdmin && (
         <div className="bg-amber-50 border border-amber-200 text-amber-700 p-4 rounded-xl mb-6 flex items-start gap-3 text-xs leading-relaxed shadow-xs">
@@ -337,7 +338,7 @@ alert(`${t("team.successMessage")} ${nom} (${role}) ${t("team.successMessage2")}
         )}
 
       </div>
-
+      </div>
     </div>
   );
 }

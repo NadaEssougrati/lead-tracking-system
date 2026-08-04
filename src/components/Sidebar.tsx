@@ -1,9 +1,4 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
-import React, { useState, useRef, useEffect } from "react";
+import React from "react";
 import { 
   Home, 
   Users, 
@@ -16,12 +11,9 @@ import {
   Calendar, 
   BarChart3, 
   FileText, 
-  Settings, 
-  ChevronDown,
-  LogOut
+  Settings
 } from "lucide-react";
 import { Role, User as UserType } from "../types";
-import { setAccessToken } from "../api";
 import { usePreferences } from "../AppPreferences";
 
 export type SidebarTab = 
@@ -55,20 +47,8 @@ export default function Sidebar({
   selectedLeadId,
   activeUser,
   users,
-  onUserChange
 }: SidebarProps) {
-  const dropdownRef = useRef<HTMLDivElement>(null);
   const { t } = usePreferences();
-
-  const handleLogout = () => {
-    setAccessToken(null);
-    window.location.reload();
-  };
-
-  const getUserAvatar = (user: UserType) => {
-    if (user.avatar) return user.avatar;
-    return `https://ui-avatars.com/api/?name=${encodeURIComponent(user.nom)}&background=0B1528&color=93c5fd&size=128`;
-  };
 
   const mainItem = { id: "dashboard" as SidebarTab, labelKey: "nav.dashboard", icon: Home };
 
@@ -137,9 +117,15 @@ export default function Sidebar({
 
   return (
     <aside className="w-60 bg-[#0B1528] border-r border-blue-950 flex flex-col h-screen text-slate-200 font-sans" id="app-sidebar">
-      
+      {/* Brand Header & Logo */}
+      <div className="h-16 flex items-center gap-2.5 px-5 border-b border-blue-950/60 bg-[#090f1d] flex-shrink-0">
+        <div className="h-7 w-7 rounded-lg bg-blue-600 flex items-center justify-center shadow-md shadow-blue-500/20 font-black text-white text-xs tracking-tighter">
+          LF
+        </div>
+        <span className="font-bold text-xs text-white tracking-wide uppercase">LeadFlow CRM</span>
+      </div>
+
       <div className="flex-1 overflow-y-auto px-2 py-4 select-none">
-        
         <button
           onClick={() => onTabChange(mainItem.id)}
           className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-xs font-semibold transition-all duration-150 mb-4 cursor-pointer ${
@@ -148,7 +134,7 @@ export default function Sidebar({
               : "hover:bg-white/5 text-slate-300 hover:text-white"
           }`}
         >
-<Home className="h-4 w-4" />
+          <Home className="h-4 w-4" />
           <span>{t(mainItem.labelKey)}</span>
         </button>
 
@@ -172,7 +158,7 @@ export default function Sidebar({
                         : "hover:bg-white/5 text-slate-300 hover:text-white"
                     }`}
                   >
-<Icon className="h-4 w-4 flex-shrink-0" />
+                    <Icon className="h-4 w-4 flex-shrink-0" />
                     <span>{t(item.labelKey)}</span>
                   </button>
                 );
@@ -180,28 +166,6 @@ export default function Sidebar({
             </div>
           </div>
         ))}
-      </div>
-
-      <div className="p-3 border-t border-blue-950 bg-[#070e1b]">
-        <div className="w-full flex items-center gap-3 p-2 rounded-lg bg-slate-900/70">
-          <img 
-            src={getUserAvatar(activeUser)} 
-            alt={activeUser.nom} 
-            className="h-10 w-10 rounded-full object-cover border border-blue-900/50"
-            referrerPolicy="no-referrer"
-          />
-          <div className="overflow-hidden">
-            <h4 className="text-xs font-bold text-white truncate leading-tight">{activeUser.nom}</h4>
-            <p className="text-[10px] text-blue-300 font-medium truncate">{activeUser.role}</p>
-          </div>
-        </div>
-        <button
-          onClick={handleLogout}
-          className="mt-3 w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-rose-500/10 text-rose-200 hover:bg-rose-500/20 transition-colors text-sm font-semibold"
-        >
-<LogOut className="h-4 w-4" />
-          {t("nav.logout")}
-        </button>
       </div>
     </aside>
   );
