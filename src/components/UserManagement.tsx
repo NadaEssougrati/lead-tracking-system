@@ -15,7 +15,12 @@ import {
   Mail,
   Phone,
   Building,
-  UserRound
+  UserRound,
+  Eye,
+  EyeOff,
+  Key,
+  Sparkles,
+  RefreshCw
 } from "lucide-react";
 import { User, Role } from "../types";
 import { usePreferences } from "../AppPreferences";
@@ -50,6 +55,56 @@ export default function UserManagement({
   const [role, setRole] = useState<Role>(Role.COMMERCIAL);
   const [telephone, setTelephone] = useState("");
   const [motDePasse, setMotDePasse] = useState("");
+
+  // Password Visibility and Generator States
+  const [showPassword, setShowPassword] = useState(false);
+  const [showGenPopup, setShowGenPopup] = useState(false);
+  const [genLength, setGenLength] = useState(12);
+  const [genUppercase, setGenUppercase] = useState(true);
+  const [genLowercase, setGenLowercase] = useState(true);
+  const [genNumbers, setGenNumbers] = useState(true);
+  const [genSymbols, setGenSymbols] = useState(true);
+
+  const handleQuickNumericGen = () => {
+    const digits = "0123456789";
+    let pwd = "";
+    for (let i = 0; i < 8; i++) {
+      pwd += digits[Math.floor(Math.random() * 10)];
+    }
+    setMotDePasse(pwd);
+    setShowPassword(true);
+  };
+
+  const handleComplexGen = () => {
+    const upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    const lower = "abcdefghijklmnopqrstuvwxyz";
+    const nums = "0123456789";
+    const syms = "!@#$%^&*()_+~`|}{[]:;?><,./-=";
+    
+    let chars = "";
+    if (genUppercase) chars += upper;
+    if (genLowercase) chars += lower;
+    if (genNumbers) chars += nums;
+    if (genSymbols) chars += syms;
+    
+    if (!chars) chars = nums;
+    
+    let pwd = "";
+    if (genUppercase) pwd += upper[Math.floor(Math.random() * upper.length)];
+    if (genLowercase) pwd += lower[Math.floor(Math.random() * lower.length)];
+    if (genNumbers) pwd += nums[Math.floor(Math.random() * nums.length)];
+    if (genSymbols) pwd += syms[Math.floor(Math.random() * syms.length)];
+    
+    const remaining = genLength - pwd.length;
+    for (let i = 0; i < remaining; i++) {
+      pwd += chars[Math.floor(Math.random() * chars.length)];
+    }
+    
+    const shuffled = pwd.split("").sort(() => 0.5 - Math.random()).join("");
+    setMotDePasse(shuffled);
+    setShowPassword(true);
+    setShowGenPopup(false);
+  };
 
   // CRM Config Parameter States
   const [leadSources, setLeadSources] = useState([
@@ -204,18 +259,134 @@ alert(`${t("team.successMessage")} ${nom} (${role}) ${t("team.successMessage2")}
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-slate-500 font-bold mb-1 uppercase text-[9px]">{t("team.tempPassword")}</label>
-                  <input
-                    type="password"
-                    required
-                    minLength={6}
-                    disabled={!isAdmin}
-                    placeholder={t("team.passwordHint")}
-                    value={motDePasse}
-                    onChange={(e) => setMotDePasse(e.target.value)}
-                    className="w-full bg-slate-50 rounded p-2 border border-slate-200 text-slate-800 disabled:opacity-40 focus:bg-white focus:outline-none"
-                  />
+                <div className="relative">
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="block text-slate-500 font-bold uppercase text-[9px]">{t("team.tempPassword")}</label>
+                    {isAdmin && (
+                      <div className="flex items-center gap-2 text-[10px]">
+                        {/* Quick 8-Numbers Gen Button */}
+                        <button
+                          type="button"
+                          onClick={handleQuickNumericGen}
+                          className="text-blue-600 hover:text-blue-700 font-bold cursor-pointer flex items-center gap-0.5"
+                          title="Générer rapidement un code à 8 chiffres"
+                        >
+                          <Sparkles className="h-3 w-3" />
+                          <span>Code 8-chiffres</span>
+                        </button>
+                        
+                        <span>|</span>
+                        
+                        {/* Custom Gen Settings Trigger */}
+                        <button
+                          type="button"
+                          onClick={() => setShowGenPopup(!showGenPopup)}
+                          className="text-slate-500 hover:text-slate-800 font-bold cursor-pointer flex items-center gap-0.5 relative"
+                        >
+                          <Key className="h-3 w-3 text-slate-400" />
+                          <span>Générer...</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Password Gen settings dropdown overlay popup */}
+                  {showGenPopup && (
+                    <div className="absolute right-0 top-6 z-50 w-64 bg-white border border-slate-200 p-4 rounded-lg shadow-lg text-slate-700 space-y-3 animate-fade-in dark:bg-slate-900 dark:border-slate-800 dark:text-slate-200">
+                      <div className="font-bold text-xs border-b border-slate-100 pb-1.5 flex items-center gap-1.5">
+                        <Key className="h-3.5 w-3.5 text-blue-500" />
+                        <span>Générateur de mot de passe</span>
+                      </div>
+                      
+                      {/* Length Slider */}
+                      <div>
+                        <div className="flex justify-between text-[10px] mb-1 font-semibold">
+                          <span>Longueur :</span>
+                          <span className="font-bold text-blue-600">{genLength}</span>
+                        </div>
+                        <input
+                          type="range"
+                          min={6}
+                          max={32}
+                          value={genLength}
+                          onChange={(e) => setGenLength(parseInt(e.target.value))}
+                          className="w-full h-1 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                        />
+                      </div>
+
+                      {/* Options */}
+                      <div className="grid grid-cols-2 gap-2 text-[10px] font-semibold">
+                        <label className="flex items-center gap-1.5 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={genUppercase}
+                            onChange={(e) => setGenUppercase(e.target.checked)}
+                            className="rounded text-blue-600"
+                          />
+                          <span>Majuscules</span>
+                        </label>
+                        <label className="flex items-center gap-1.5 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={genLowercase}
+                            onChange={(e) => setGenLowercase(e.target.checked)}
+                            className="rounded text-blue-600"
+                          />
+                          <span>Minuscules</span>
+                        </label>
+                        <label className="flex items-center gap-1.5 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={genNumbers}
+                            onChange={(e) => setGenNumbers(e.target.checked)}
+                            className="rounded text-blue-600"
+                          />
+                          <span>Chiffres</span>
+                        </label>
+                        <label className="flex items-center gap-1.5 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={genSymbols}
+                            onChange={(e) => setGenSymbols(e.target.checked)}
+                            className="rounded text-blue-600"
+                          />
+                          <span>Symboles</span>
+                        </label>
+                      </div>
+
+                      {/* Generate Button */}
+                      <button
+                        type="button"
+                        onClick={handleComplexGen}
+                        className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-1.5 rounded text-[11px] transition-colors cursor-pointer flex items-center justify-center gap-1"
+                      >
+                        <RefreshCw className="h-3 w-3" />
+                        Générer & Appliquer
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Input field with eye icon inside */}
+                  <div className="relative">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      required
+                      minLength={6}
+                      disabled={!isAdmin}
+                      placeholder={t("team.passwordHint")}
+                      value={motDePasse}
+                      onChange={(e) => setMotDePasse(e.target.value)}
+                      className="w-full bg-slate-50 rounded p-2 pr-9 border border-slate-200 text-slate-800 disabled:opacity-40 focus:bg-white focus:outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 cursor-pointer"
+                      title={showPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"}
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
