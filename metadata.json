@@ -1,6 +1,0 @@
-{
-  "name": "Tracking Lead System",
-  "description": "Plateforme web de gestion, de suivi et d'analyse des leads - Nada, Assia et Mohamed",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
-}

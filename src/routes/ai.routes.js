@@ -6,21 +6,16 @@ import { authenticate } from "../middleware/auth.js";
 const router = express.Router();
 router.use(authenticate);
 
-// Initialize Gemini Client
+// Initialize AI Client
 let ai = null;
 if (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== "MY_GEMINI_API_KEY") {
   try {
     ai = new GoogleGenAI({
       apiKey: process.env.GEMINI_API_KEY,
-      httpOptions: {
-        headers: {
-          'User-Agent': 'aistudio-build',
-        }
-      }
     });
-    console.log("Gemini API client initialized successfully for CRM.");
+    console.log("AI client initialized successfully for CRM.");
   } catch (error) {
-    console.error("Failed to initialize Gemini API Client in AI routes:", error);
+    console.error("Failed to initialize AI Client in routes:", error);
   }
 }
 
