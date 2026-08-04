@@ -1,0 +1,236 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum RoleUtilisateur {
+  Administrateur
+  Manager
+  Commercial
+  AgentMarketing
+}
+
+enum SourceLead {
+  SiteWeb
+  ReseauxSociaux
+  Recommandation
+  Emailing
+  Salon
+  Telephone
+}
+
+enum StatutPipeline {
+  Nouveau
+  PremierContact
+  Qualification
+  PropositionCommerciale
+  Negociation
+  Gagne
+  Perdu
+}
+
+enum Priorite {
+  Basse
+  Moyenne
+  Haute
+}
+
+enum TypeActivite {
+  Appel
+  Email
+  RendezVous
+  Note
+}
+
+enum StatutTache {
+  AFaire
+  EnCours
+  Terminee
+}
+
+enum StatutDevis {
+  Brouillon
+  Envoye
+  Accepte
+  Refuse
+}
+
+enum TypeFichier {
+  PDF
+  DOC
+  DOCX
+  XLS
+  XLSX
+  PPT
+  PPTX
+  JPG
+  JPEG
+  PNG
+  Autre
+}
+
+model Utilisateur {
+  id            String           @id @default(uuid()) @db.Uuid
+  nom           String
+  prenom        String
+  email         String           @unique
+  motDePasse    String
+  telephone     String?
+  role          RoleUtilisateur  @default(Commercial)
+  actif         Boolean          @default(true)
+  avatar        String?
+  dateCreation  DateTime         @default(now())
+  leadsAssignes Lead[]           @relation("CommercialLead")
+  attributions  Attribution[]
+  activites     Activite[]
+  taches        Tache[]
+  notifications Notification[]
+  historiques   Historique[]
+}
+
+model Entreprise {
+  id        String @id @default(uuid()) @db.Uuid
+  nom       String
+  secteur   String?
+  adresse   String?
+  ville     String?
+  pays      String?
+  telephone String?
+  siteWeb   String?
+  leads     Lead[]
+}
+
+model Lead {
+  id                String          @id @default(uuid()) @db.Uuid
+  nom               String
+  prenom            String
+  telephone         String?
+  email             String?
+  adresse           String?
+  ville             String?
+  pays              String?
+  source            SourceLead
+  statut            StatutPipeline  @default(Nouveau)
+  priorite          Priorite        @default(Moyenne)
+  score             Int             @default(0)
+  valeurEstimee     Decimal         @default(0) @db.Decimal(14, 2)
+  dateCreation      DateTime        @default(now())
+  derniereActivite  DateTime?
+  notes             String?
+  entrepriseId      String?         @db.Uuid
+  commercialId      String?         @db.Uuid
+  entreprise        Entreprise?     @relation(fields: [entrepriseId], references: [id], onDelete: SetNull)
+  commercial        Utilisateur?    @relation("CommercialLead", fields: [commercialId], references: [id], onDelete: SetNull)
+  attributions      Attribution[]
+  activites         Activite[]
+  taches            Tache[]
+  devis             Devis[]
+  historiques       Historique[]
+  documents         DocumentJoint[]
+  analysesIA        AssistantIA[]
+
+  @@index([statut])
+  @@index([commercialId])
+}
+
+model Attribution {
+  id              String      @id @default(uuid()) @db.Uuid
+  dateAttribution DateTime    @default(now())
+  leadId          String      @db.Uuid
+  commercialId    String      @db.Uuid
+  lead            Lead        @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  commercial      Utilisateur @relation(fields: [commercialId], references: [id], onDelete: Cascade)
+
+  @@index([leadId])
+}
+
+model Activite {
+  id            String      @id @default(uuid()) @db.Uuid
+  type          TypeActivite
+  description   String
+  dateActivite  DateTime    @default(now())
+  leadId        String      @db.Uuid
+  utilisateurId String      @db.Uuid
+  lead          Lead        @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  utilisateur   Utilisateur @relation(fields: [utilisateurId], references: [id], onDelete: Restrict)
+
+  @@index([leadId, dateActivite])
+}
+
+model Tache {
+  id            String      @id @default(uuid()) @db.Uuid
+  titre         String
+  description   String?
+  statut        StatutTache @default(AFaire)
+  critique      Boolean     @default(false)
+  dateEcheance  DateTime
+  dateCreation  DateTime    @default(now())
+  leadId        String      @db.Uuid
+  utilisateurId String      @db.Uuid
+  lead          Lead        @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  utilisateur   Utilisateur @relation(fields: [utilisateurId], references: [id], onDelete: Restrict)
+
+  @@index([utilisateurId, statut])
+}
+
+model Devis {
+  id            String      @id @default(uuid()) @db.Uuid
+  reference     String      @unique
+  montant       Decimal     @db.Decimal(14, 2)
+  statut        StatutDevis @default(Brouillon)
+  dateCreation  DateTime    @default(now())
+  leadId        String      @db.Uuid
+  lead          Lead        @relation(fields: [leadId], references: [id], onDelete: Cascade)
+}
+
+model Notification {
+  id            String      @id @default(uuid()) @db.Uuid
+  titre         String
+  message       String
+  estLue        Boolean     @default(false)
+  dateCreation  DateTime    @default(now())
+  utilisateurId String      @db.Uuid
+  utilisateur   Utilisateur @relation(fields: [utilisateurId], references: [id], onDelete: Cascade)
+
+  @@index([utilisateurId, estLue])
+}
+
+model Historique {
+  id            String      @id @default(uuid()) @db.Uuid
+  action        String
+  description   String?
+  dateAction    DateTime    @default(now())
+  leadId        String      @db.Uuid
+  utilisateurId String      @db.Uuid
+  lead          Lead        @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  utilisateur   Utilisateur @relation(fields: [utilisateurId], references: [id], onDelete: Restrict)
+}
+
+model DocumentJoint {
+  id          String      @id @default(uuid()) @db.Uuid
+  nomFichier  String
+  typeFichier TypeFichier
+  cheminFichier String
+  taille      Int
+  dateAjout   DateTime    @default(now())
+  leadId      String      @db.Uuid
+  lead        Lead        @relation(fields: [leadId], references: [id], onDelete: Cascade)
+}
+
+model AssistantIA {
+  id                    String   @id @default(uuid()) @db.Uuid
+  scoreLead             Int
+  actionRecommandee     String
+  meilleurMomentRelance String?
+  resumeEchanges        String?
+  alerte                String?
+  dateGeneration        DateTime @default(now())
+  leadId                String   @db.Uuid
+  lead                  Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([leadId, dateGeneration])
+}
