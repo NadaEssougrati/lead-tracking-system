@@ -1,26 +1,20 @@
-# Lead Tracking System
+<div align="center">
+<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
+</div>
 
-A streamlined web app for managing leads, reviewing activity, and controlling user access in a clean, modern interface.
+# Run and deploy your AI Studio app
+
+This contains everything you need to run your app locally.
+
+View your app in AI Studio: https://ai.studio/apps/c72fa827-4632-4b3a-b551-1015e7d4e34e
 
 ## Run Locally
 
-**Prerequisites:** Node.js
+**Prerequisites:**  Node.js
+
 
 1. Install dependencies:
    `npm install`
-2. Configure environment variables in `.env` (see `.env.example` & `local_setup_guide.md`)
-3. Run database migrations:
-   `npm run db:push`
-4. Seed the database with mock data:
-   `node seed.js`
-5. Run the app:
+2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
+3. Run the app:
    `npm run dev`
-
-## Sandbox Test Accounts
-
-The following test credentials are created when you seed the database (`node seed.js`):
-
-*   **Administrateur (Admin)**: `admin@example.com` / `admin123`
-*   **Manager**: `manager1@example.com` / `manager123`
-*   **Commercial**: `commercial1@example.com` / `commercial123`
-*   **Agent Marketing**: `marketing1@example.com` / `marketing123`
