@@ -11,7 +11,8 @@ import {
   Calendar, 
   BarChart3, 
   FileText, 
-  Settings
+  Settings,
+  Target
 } from "lucide-react";
 import { Role, User as UserType } from "../types";
 import { usePreferences } from "../AppPreferences";
@@ -119,8 +120,8 @@ export default function Sidebar({
     <aside className="w-60 bg-[#0B1528] border-r border-blue-950 flex flex-col h-screen text-slate-200 font-sans" id="app-sidebar">
       {/* Brand Header & Logo */}
       <div className="h-16 flex items-center gap-2.5 px-5 border-b border-blue-950/60 bg-[#090f1d] flex-shrink-0">
-        <div className="h-7 w-7 rounded-lg bg-blue-600 flex items-center justify-center shadow-md shadow-blue-500/20 font-black text-white text-xs tracking-tighter">
-          LF
+        <div className="h-7 w-7 rounded-lg bg-blue-600/10 border border-blue-500/20 flex items-center justify-center shadow-md shadow-blue-500/5 text-blue-450 flex-shrink-0">
+          <Target className="h-4.5 w-4.5 text-blue-400" />
         </div>
         <span className="font-bold text-xs text-white tracking-wide uppercase">LeadFlow CRM</span>
       </div>

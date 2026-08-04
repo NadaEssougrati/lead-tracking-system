@@ -16,7 +16,8 @@ import {
   ChevronRight,
   User,
   Sparkles,
-  RefreshCw
+  RefreshCw,
+  Search
 } from "lucide-react";
 import { Lead, Quote, User as UserType } from "../types";
 
@@ -49,8 +50,15 @@ export default function QuoteGenerator({
 
   // Active Quote focused for PDF simulation
   const [focusedQuoteId, setFocusedQuoteId] = useState<string | null>(quotes[0]?.id || null);
+  const [searchTerm, setSearchTerm] = useState("");
 
-  const activeQuote = quotes.find(q => q.id === focusedQuoteId) || quotes[0];
+  const filteredQuotes = quotes.filter(q => {
+    const lead = leads.find(l => l.id === q.leadId);
+    const query = searchTerm.toLowerCase();
+    return q.reference.toLowerCase().includes(query) || (lead && lead.societe.toLowerCase().includes(query));
+  });
+
+  const activeQuote = filteredQuotes.find(q => q.id === focusedQuoteId) || filteredQuotes[0];
   const activeQuoteLead = leads.find(l => l.id === activeQuote?.leadId);
 
   // Add line item
@@ -221,8 +229,22 @@ export default function QuoteGenerator({
               Devis et propositions émis
             </h3>
 
+            {/* Search Input */}
+            <div className="relative mb-3">
+              <span className="absolute inset-y-0 left-0 flex items-center pl-2.5 pointer-events-none text-slate-400">
+                <Search className="h-3.5 w-3.5" />
+              </span>
+              <input
+                type="text"
+                placeholder="Rechercher un devis..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg py-1.5 pl-8 pr-3 text-slate-750 text-xs focus:outline-none focus:border-blue-500 focus:bg-white"
+              />
+            </div>
+
             <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
-              {quotes.map((q) => {
+              {filteredQuotes.map((q) => {
                 const lead = leads.find((l) => l.id === q.leadId);
                 const isSelected = q.id === focusedQuoteId;
 

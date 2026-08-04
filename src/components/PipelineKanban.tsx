@@ -102,7 +102,8 @@ export default function PipelineKanban({
   };
 
   return (
-    <div className="flex-1 flex flex-col min-h-0 bg-slate-50 p-6" id="pipeline-kanban-root">
+    <div className="flex-1 flex flex-col min-h-0 bg-slate-50 dark:bg-slate-950 p-6" id="pipeline-kanban-root">
+      <div className="max-w-[1600px] mx-auto w-full flex-1 flex flex-col min-h-0">
       
       {/* Header Info */}
       <div className="mb-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -264,6 +265,7 @@ export default function PipelineKanban({
             </div>
           );
         })}
+      </div>
       </div>
     </div>
   );

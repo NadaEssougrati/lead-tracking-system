@@ -509,7 +509,7 @@ const avgScore = Math.round(companyLeads.reduce((sum, cl) => sum + cl.score, 0) 
 
       return (
         <div className="flex-1 bg-slate-50 dark:bg-slate-950 p-6 overflow-y-auto max-h-[calc(100vh-4rem)] text-slate-850" id="companies-directory-root">
-          <div className="max-w-4xl mx-auto space-y-6">
+          <div className="max-w-7xl mx-auto w-full space-y-6">
             
             {/* Header section */}
             <div className="bg-white border border-slate-200 p-6 rounded-xl shadow-sm">
@@ -658,7 +658,7 @@ onClick={() => {
 
       return (
         <div className="flex-1 bg-slate-50 dark:bg-slate-950 p-6 overflow-y-auto max-h-[calc(100vh-4rem)] text-slate-850" id="contacts-directory-root">
-          <div className="max-w-4xl mx-auto space-y-6">
+          <div className="max-w-7xl mx-auto w-full space-y-6">
             
             {/* Header section */}
             <div className="bg-white border border-slate-200 p-6 rounded-xl shadow-sm">
@@ -817,7 +817,7 @@ onClick={() => {
 
     return (
       <div className="flex-1 bg-slate-50 dark:bg-slate-950 p-6 overflow-y-auto max-h-[calc(100vh-4rem)] text-slate-850" id="lead-selector-root">
-        <div className="max-w-4xl mx-auto space-y-6">
+        <div className="max-w-7xl mx-auto w-full space-y-6">
           <div className="bg-white border border-slate-200 p-6 rounded-xl shadow-sm flex flex-col md:flex-row justify-between md:items-center gap-4">
             <div>
               <h2 className="text-xl font-bold font-display text-slate-900 mb-2 flex items-center gap-2">
