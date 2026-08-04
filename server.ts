@@ -66,7 +66,7 @@ app.post("/api/gemini/analyze-lead", async (req, res) => {
       activities && activities.length === 0 ? "Aucune interaction récente enregistrée. Risque d'inactivité." : "S'assurer de l'adéquation technique pour éviter les décalages de planning.",
       lead.notes && lead.notes.toLowerCase().includes("concurrent") ? "Concurrence active signalée dans les notes." : "Délai de décision qui peut s'allonger en l'absence d'un champion interne."
     ],
-    resumeEchanges: activities && activities.length > 0 
+    resumeEchanges: activities && activities.length > 0
       ? `Historique contenant ${activities.length} interaction(s). Le prospect montre un intérêt marqué notamment lors des échanges initiés par l'équipe.`
       : "Aucun échange significatif n'a été enregistré à ce jour pour ce prospect. Il est urgent d'établir le premier contact."
   };
