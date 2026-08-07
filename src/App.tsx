@@ -4,17 +4,18 @@
  */
 
 import React, { useEffect, useState } from "react";
-import { 
-  Role, 
-  LeadStatus, 
-  LeadPriority, 
+import {
+  Role,
+  LeadStatus,
+  LeadPriority,
   TaskStatus,
   ActivityType,
-  User, 
-  Lead, 
-  Activity, 
-  Task, 
-  Quote 
+  User,
+  Lead,
+  Activity,
+  Task,
+  Quote,
+  SystemNotification
 } from "./types";
 import { api, login, setAccessToken } from "./api";
 import { Eye, EyeOff } from "lucide-react";
@@ -36,8 +37,8 @@ import { usePreferences } from "./AppPreferences";
 
 export default function App() {
   const { t } = usePreferences();
-const [email, setEmail] = useState("admin@leedpro.com");
-  const [motDePasse, setMotDePasse] = useState("ChangeMe123!");
+  const [email, setEmail] = useState("");
+  const [motDePasse, setMotDePasse] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [authError, setAuthError] = useState("");
   const [isAuthenticating, setIsAuthenticating] = useState(Boolean(localStorage.getItem("accessToken")));
@@ -51,7 +52,7 @@ const [email, setEmail] = useState("admin@leedpro.com");
   const [tasks, setTasks] = useState<Task[]>([]);
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [notifications, setNotifications] = useState<SystemNotification[]>([]);
-  
+
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -60,17 +61,17 @@ const [email, setEmail] = useState("admin@leedpro.com");
   const toSource = (source: string): Lead["source"] => ({ SiteWeb: "Site web", ReseauxSociaux: "Réseaux sociaux", Recommandation: "Recommandation", Emailing: "Emailing", Salon: "Salon professionnel", Telephone: "Appel téléphonique" }[source] || source) as Lead["source"];
   const toStatus = (statut: string): LeadStatus => ({ Nouveau: "Nouveau", PremierContact: "Contacté", Qualification: "Qualifié", PropositionCommerciale: "Proposition envoyée", Negociation: "Négociation", Gagne: "Converti (Gagné)", Perdu: "Perdu" }[statut] || statut) as LeadStatus;
   const toLead = (lead: any): Lead => ({ ...lead, source: toSource(lead.source), statut: toStatus(lead.statut), commercialId: lead.commercialId, societe: lead.entreprise?.nom || "", documents: lead.documents || [], valeurEstimee: Number(lead.valeurEstimee), dateCreation: lead.dateCreation, derniereActivite: lead.derniereActivite || lead.dateCreation });
-  const toActivity = (item: any): Activity => ({ id:item.id, leadId:item.leadId, type: ({RendezVous:"Rendez-vous"}[item.type] || item.type) as Activity["type"], date:item.dateActivite, auteur:item.utilisateur ? `${item.utilisateur.prenom || ""} ${item.utilisateur.nom || ""}`.trim() || item.utilisateur?.email || "" : item.auteur || "", description:item.description });
+  const toActivity = (item: any): Activity => ({ id: item.id, leadId: item.leadId, type: ({ RendezVous: "Rendez-vous" }[item.type] || item.type) as Activity["type"], date: item.dateActivite, auteur: item.utilisateur ? `${item.utilisateur.prenom || ""} ${item.utilisateur.nom || ""}`.trim() || item.utilisateur?.email || "" : item.auteur || "", description: item.description });
   const toTask = (item: any): Task => ({
     ...item,
-    statut: ({AFaire:"À faire",EnCours:"En cours",Terminee:"Terminée"}[item.statut] || item.statut) as TaskStatus,
+    statut: ({ AFaire: "À faire", EnCours: "En cours", Terminee: "Terminée" }[item.statut] || item.statut) as TaskStatus,
     assigneA: item.utilisateur ? `${item.utilisateur.prenom} ${item.utilisateur.nom}` : item.assigneA || "",
     utilisateurId: item.utilisateur?.id || item.utilisateurId,
     dateEcheance: item.dateEcheance,
     critique: item.critique ?? false
   });
-const toQuote = (item: any): Quote => ({ ...item, montant:Number(item.montant), statut: ({Envoye:"Envoyé",Accepte:"Accepté",Refuse:"Refusé"}[item.statut] || item.statut) as Quote["statut"], dateEmission:item.dateCreation, dateValidite:item.dateCreation, articles:Array.isArray(item.lignes) ? item.lignes : [] });
-  const toNotification = (item:any): SystemNotification => ({ id:item.id,titre:item.titre,message:item.message,date:item.dateCreation,lue:item.estLue,type:"info" });
+  const toQuote = (item: any): Quote => ({ ...item, montant: Number(item.montant), statut: ({ Envoye: "Envoyé", Accepte: "Accepté", Refuse: "Refusé" }[item.statut] || item.statut) as Quote["statut"], dateEmission: item.dateCreation, dateValidite: item.dateCreation, articles: Array.isArray(item.lignes) ? item.lignes : [] });
+  const toNotification = (item: any): SystemNotification => ({ id: item.id, titre: item.titre, message: item.message, date: item.dateCreation, lue: item.estLue, type: "info" });
 
   const loadData = async () => {
     const [me, apiUsers, apiLeads, apiActivities, apiTasks, apiQuotes, apiNotifications] = await Promise.all([
@@ -79,23 +80,23 @@ const toQuote = (item: any): Quote => ({ ...item, montant:Number(item.montant), 
     setActiveUser(toUser(me)); setUsers(apiUsers.map(toUser)); setLeads(apiLeads.map(toLead)); setActivities(apiActivities.map(toActivity)); setTasks(apiTasks.map(toTask)); setQuotes(apiQuotes.map(toQuote)); setNotifications(apiNotifications.map(toNotification));
   };
 
-useEffect(() => { if (!localStorage.getItem("accessToken")) return; loadData().catch(() => { setAccessToken(null); setAuthError(t("login.sessionExpired")); }).finally(() => { setIsAuthenticating(false); setIsLoading(false); }); }, []);
+  useEffect(() => { if (!localStorage.getItem("accessToken")) return; loadData().catch(() => { setAccessToken(null); setAuthError(t("login.sessionExpired")); }).finally(() => { setIsAuthenticating(false); setIsLoading(false); }); }, []);
 
-// Poll notifications so actions performed by other team members
-// (emails sent, tasks added, quotes issued...) appear in real time.
-useEffect(() => {
-  if (!localStorage.getItem("accessToken")) return;
-  const refreshNotifications = async () => {
-    try {
-      const apiNotifications = await api<any[]>("/notifications");
-      setNotifications(apiNotifications.map(toNotification));
-    } catch (e) {
-      // ignore transient polling errors
-    }
-  };
-  const interval = window.setInterval(refreshNotifications, 10000);
-  return () => window.clearInterval(interval);
-}, []);
+  // Poll notifications so actions performed by other team members
+  // (emails sent, tasks added, quotes issued...) appear in real time.
+  useEffect(() => {
+    if (!localStorage.getItem("accessToken")) return;
+    const refreshNotifications = async () => {
+      try {
+        const apiNotifications = await api<any[]>("/notifications");
+        setNotifications(apiNotifications.map(toNotification));
+      } catch (e) {
+        // ignore transient polling errors
+      }
+    };
+    const interval = window.setInterval(refreshNotifications, 10000);
+    return () => window.clearInterval(interval);
+  }, []);
 
   const handleLogin = async (event: React.FormEvent) => {
     event.preventDefault(); setAuthError(""); setIsAuthenticating(true);
@@ -110,20 +111,20 @@ useEffect(() => {
     setActiveTab("leads");
   };
 
-// Add single lead
+  // Add single lead
   const handleAddLead = async (newLeadData: Omit<Lead, "id" | "dateCreation" | "derniereActivite" | "documents" | "score"> & { entrepriseId?: string }) => {
-    const source = ({ "Site web":"SiteWeb", "Réseaux sociaux":"ReseauxSociaux", Recommandation:"Recommandation", Emailing:"Emailing", "Salon professionnel":"Salon", "Appel téléphonique":"Telephone" }[newLeadData.source] || newLeadData.source);
-    const statut = ({ "Nouveau":"Nouveau", "Contacté":"PremierContact", "Qualifié":"Qualification", "Proposition envoyée":"PropositionCommerciale", "Négociation":"Negociation", "Converti (Gagné)":"Gagne", "Perdu":"Perdu" }[newLeadData.statut] || newLeadData.statut);
+    const source = ({ "Site web": "SiteWeb", "Réseaux sociaux": "ReseauxSociaux", Recommandation: "Recommandation", Emailing: "Emailing", "Salon professionnel": "Salon", "Appel téléphonique": "Telephone" }[newLeadData.source] || newLeadData.source);
+    const statut = ({ "Nouveau": "Nouveau", "Contacté": "PremierContact", "Qualifié": "Qualification", "Proposition envoyée": "PropositionCommerciale", "Négociation": "Negociation", "Converti (Gagné)": "Gagne", "Perdu": "Perdu" }[newLeadData.statut] || newLeadData.statut);
     let entrepriseId: string | undefined = newLeadData.entrepriseId;
     // Only create a new company when the user typed a brand-new company name
-    if (newLeadData.societe && !entrepriseId) entrepriseId = (await api<any>("/companies", { method:"POST", body:JSON.stringify({nom:newLeadData.societe}) })).id;
-    const created = await api<any>("/leads", { method:"POST", body:JSON.stringify({ ...newLeadData, source, statut, entrepriseId, societe:undefined }) });
+    if (newLeadData.societe && !entrepriseId) entrepriseId = (await api<any>("/companies", { method: "POST", body: JSON.stringify({ nom: newLeadData.societe }) })).id;
+    const created = await api<any>("/leads", { method: "POST", body: JSON.stringify({ ...newLeadData, source, statut, entrepriseId, societe: undefined }) });
     setLeads((current) => [toLead(created), ...current]);
   };
 
   // Add quick note / call / email log
   const handleAddActivity = async (actData: Omit<Activity, "id">) => {
-    const type = ({ "Rendez-vous":"RendezVous" }[actData.type] || actData.type);
+    const type = ({ "Rendez-vous": "RendezVous" }[actData.type] || actData.type);
     const created = await api<any>("/activities", {
       method: "POST",
       body: JSON.stringify({
@@ -154,7 +155,7 @@ useEffect(() => {
         method: "PATCH",
         body: JSON.stringify({
           ...(updates.description && { description: updates.description }),
-          ...(updates.type && { type: ({ "Rendez-vous":"RendezVous" }[updates.type] || updates.type) })
+          ...(updates.type && { type: ({ "Rendez-vous": "RendezVous" }[updates.type] || updates.type) })
         })
       });
       setActivities((current) => current.map(a => a.id === activityId ? toActivity(updated) : a));
@@ -163,9 +164,9 @@ useEffect(() => {
     }
   };
 
-// Add Task
+  // Add Task
   const handleAddTask = async (taskData: Omit<Task, "id"> & { utilisateurId?: string }) => {
-    const statut = ({ "À faire":"AFaire", "En cours":"EnCours", "Terminée":"Terminee" }[taskData.statut] || taskData.statut);
+    const statut = ({ "À faire": "AFaire", "En cours": "EnCours", "Terminée": "Terminee" }[taskData.statut] || taskData.statut);
     const payload = {
       titre: taskData.titre,
       description: taskData.description,
@@ -175,7 +176,7 @@ useEffect(() => {
       utilisateurId: taskData.utilisateurId || activeUser.id,
       critique: taskData.critique || false
     };
-    const created = await api<any>("/tasks", { method:"POST", body:JSON.stringify(payload) });
+    const created = await api<any>("/tasks", { method: "POST", body: JSON.stringify(payload) });
     setTasks((current) => [toTask(created), ...current]);
   };
 
@@ -183,7 +184,7 @@ useEffect(() => {
     const payload: any = {};
     if (updates.titre !== undefined) payload.titre = updates.titre;
     if (updates.description !== undefined) payload.description = updates.description;
-    if (updates.statut !== undefined) payload.statut = ({ "À faire":"AFaire", "En cours":"EnCours", "Terminée":"Terminee" }[updates.statut] || updates.statut);
+    if (updates.statut !== undefined) payload.statut = ({ "À faire": "AFaire", "En cours": "EnCours", "Terminée": "Terminee" }[updates.statut] || updates.statut);
     if (updates.dateEcheance !== undefined) payload.dateEcheance = updates.dateEcheance;
     if (updates.utilisateurId !== undefined) payload.utilisateurId = updates.utilisateurId;
     if (updates.critique !== undefined) payload.critique = updates.critique;
@@ -229,8 +230,8 @@ useEffect(() => {
 
   // Update lead status (e.g. from Kanban column drag/push)
   const handleUpdateLeadStatus = async (id: string, newStatus: LeadStatus) => {
-    const statut = ({ "Nouveau":"Nouveau", "Contacté":"PremierContact", "Qualifié":"Qualification", "Proposition envoyée":"PropositionCommerciale", "Négociation":"Negociation", "Converti (Gagné)":"Gagne", "Perdu":"Perdu" }[newStatus] || newStatus);
-    await api(`/leads/${id}/status`, {method:"PATCH",body:JSON.stringify({statut})});
+    const statut = ({ "Nouveau": "Nouveau", "Contacté": "PremierContact", "Qualifié": "Qualification", "Proposition envoyée": "PropositionCommerciale", "Négociation": "Negociation", "Converti (Gagné)": "Gagne", "Perdu": "Perdu" }[newStatus] || newStatus);
+    await api(`/leads/${id}/status`, { method: "PATCH", body: JSON.stringify({ statut }) });
     setLeads((current) => current.map(l => l.id === id ? { ...l, statut: newStatus, derniereActivite: new Date().toISOString() } : l));
 
     // Register status change in activities
@@ -243,24 +244,24 @@ useEffect(() => {
     });
   };
 
-// Create quote (devis)
-const handleCreateQuote = async (quoteData: Omit<Quote, "id" | "reference">) => {
-    const statut = ({ "Envoyé":"Envoye", "Accepté":"Accepte", "Refusé":"Refuse" }[quoteData.statut] || quoteData.statut);
-const created = await api<any>("/quotes", { method:"POST", body:JSON.stringify({leadId:quoteData.leadId, montant:quoteData.montant, statut, lignes:quoteData.articles || []}) });
+  // Create quote (devis)
+  const handleCreateQuote = async (quoteData: Omit<Quote, "id" | "reference">) => {
+    const statut = ({ "Envoyé": "Envoye", "Accepté": "Accepte", "Refusé": "Refuse" }[quoteData.statut] || quoteData.statut);
+    const created = await api<any>("/quotes", { method: "POST", body: JSON.stringify({ leadId: quoteData.leadId, montant: quoteData.montant, statut, lignes: quoteData.articles || [] }) });
     const newQuote = toQuote(created);
     setQuotes((current) => [newQuote, ...current]);
   };
 
   // Update quote status
   const handleUpdateQuoteStatus = async (id: string, newStatus: Quote["statut"]) => {
-    const statut = ({ "Envoyé":"Envoye", "Accepté":"Accepte", "Refusé":"Refuse" }[newStatus] || newStatus);
-    await api(`/quotes/${id}`, { method:"PATCH", body:JSON.stringify({statut}) });
+    const statut = ({ "Envoyé": "Envoye", "Accepté": "Accepte", "Refusé": "Refuse" }[newStatus] || newStatus);
+    await api(`/quotes/${id}`, { method: "PATCH", body: JSON.stringify({ statut }) });
     setQuotes((current) => current.map(q => q.id === id ? { ...q, statut: newStatus } : q));
   };
 
-// Toggle user status
+  // Toggle user status
   const handleUpdateUserStatus = async (id: string, active: boolean) => {
-    const saved = await api<any>(`/users/${id}`, { method:"PATCH", body:JSON.stringify({actif:active}) });
+    const saved = await api<any>(`/users/${id}`, { method: "PATCH", body: JSON.stringify({ actif: active }) });
     setUsers((current) => current.map(user => user.id === id ? toUser(saved) : user));
   };
 
@@ -274,7 +275,7 @@ const created = await api<any>("/quotes", { method:"POST", body:JSON.stringify({
     if (data.email !== undefined) payload.email = data.email;
     if (data.telephone !== undefined) payload.telephone = data.telephone;
     if (data.role !== undefined) payload.role = role;
-    const saved = await api<any>(`/users/${id}`, { method:"PATCH", body:JSON.stringify(payload) });
+    const saved = await api<any>(`/users/${id}`, { method: "PATCH", body: JSON.stringify(payload) });
     setUsers((current) => current.map(user => user.id === id ? toUser(saved) : user));
   };
 
@@ -282,7 +283,7 @@ const created = await api<any>("/quotes", { method:"POST", body:JSON.stringify({
   const handleAddUser = async (newU: Omit<User, "id"> & { motDePasse: string }) => {
     const [prenom, ...nomParts] = newU.nom.trim().split(/\s+/);
     const role = newU.role === Role.MARKETING ? "AgentMarketing" : newU.role;
-    const saved = await api<any>("/users", { method:"POST", body:JSON.stringify({nom:nomParts.join(" ") || prenom, prenom:nomParts.length ? prenom : "Utilisateur", email:newU.email, role, telephone:newU.telephone, motDePasse:newU.motDePasse}) });
+    const saved = await api<any>("/users", { method: "POST", body: JSON.stringify({ nom: nomParts.join(" ") || prenom, prenom: nomParts.length ? prenom : "Utilisateur", email: newU.email, role, telephone: newU.telephone, motDePasse: newU.motDePasse }) });
     setUsers((current) => [...current, toUser(saved)]);
   };
 
@@ -311,7 +312,7 @@ const created = await api<any>("/quotes", { method:"POST", body:JSON.stringify({
   const visibleLeads = getLeadsForRole(activeUser);
 
   // Filters leads based on SearchTerm
-  const filteredLeadsForSearch = visibleLeads.filter(l => 
+  const filteredLeadsForSearch = visibleLeads.filter(l =>
     l.societe.toLowerCase().includes(searchTerm.toLowerCase()) ||
     l.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
     l.prenom.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -337,7 +338,7 @@ const created = await api<any>("/quotes", { method:"POST", body:JSON.stringify({
     }
   };
 
-// Determine page title
+  // Determine page title
   const getPageTitle = () => {
     switch (activeTab) {
       case "dashboard": return t("header.title.dashboard");
@@ -354,14 +355,14 @@ const created = await api<any>("/quotes", { method:"POST", body:JSON.stringify({
   };
 
   const handleUpdateTaskStatus = async (taskId: string, newStatus: TaskStatus) => {
-    const statut = ({ "À faire":"AFaire", "En cours":"EnCours", "Terminée":"Terminee" }[newStatus] || newStatus);
-    await api(`/tasks/${taskId}`, {method:"PATCH",body:JSON.stringify({statut})});
+    const statut = ({ "À faire": "AFaire", "En cours": "EnCours", "Terminée": "Terminee" }[newStatus] || newStatus);
+    await api(`/tasks/${taskId}`, { method: "PATCH", body: JSON.stringify({ statut }) });
     setTasks(tasks.map(t => t.id === taskId ? { ...t, statut: newStatus } : t));
   };
 
   const selectedLead = selectedLeadId ? (visibleLeads.find(l => l.id === selectedLeadId) || null) : null;
 
-if (isLoading) return <div className="min-h-screen grid place-items-center bg-slate-50 text-slate-600">{t("app.loading")}</div>;
+  if (isLoading) return <div className="min-h-screen grid place-items-center bg-slate-50 text-slate-600">{t("app.loading")}</div>;
 
   if (!localStorage.getItem("accessToken")) return (
     <main className="min-h-screen grid place-items-center bg-slate-100 p-5">
@@ -382,12 +383,12 @@ if (isLoading) return <div className="min-h-screen grid place-items-center bg-sl
     </main>
   );
 
-return (
+  return (
     <div className="flex h-screen bg-slate-50 text-slate-800 font-sans overflow-hidden dark:bg-slate-950 dark:text-slate-100" id="app-root-container">
       {/* 1. Sidebar Left */}
-      <Sidebar 
-        activeTab={activeTab} 
-onTabChange={(tab) => {
+      <Sidebar
+        activeTab={activeTab}
+        onTabChange={(tab) => {
           setActiveTab(tab);
           // clear selected lead when navigating away from lead detail views
           setSelectedLeadId(null);
@@ -402,7 +403,7 @@ onTabChange={(tab) => {
       {/* 2. Main Workstation */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Header Top Bar */}
-        <Header 
+        <Header
           activeUser={activeUser}
           notifications={notifications}
           onMarkNotificationAsRead={handleMarkNotificationAsRead}
@@ -416,17 +417,17 @@ onTabChange={(tab) => {
         <main className="flex-1 overflow-hidden flex flex-col">
           {activeTab === "dashboard" && (
             <div className="flex-1 overflow-y-auto p-6 max-h-[calc(100vh-4rem)]">
-              <DashboardStats 
-                leads={filteredLeadsForSearch} 
+              <DashboardStats
+                leads={filteredLeadsForSearch}
                 users={users}
                 activities={activities}
-                onSelectLead={handleSelectLead} 
+                onSelectLead={handleSelectLead}
               />
             </div>
           )}
 
           {activeTab === "opportunities" && (
-            <PipelineKanban 
+            <PipelineKanban
               leads={filteredLeadsForSearch}
               onSelectLead={handleSelectLead}
               onUpdateLeadStatus={handleUpdateLeadStatus}
@@ -436,7 +437,7 @@ onTabChange={(tab) => {
           )}
 
           {(activeTab === "leads" || activeTab === "companies" || activeTab === "contacts") && (
-            <LeadDetails 
+            <LeadDetails
               activeTab={activeTab}
               lead={selectedLead}
               onBack={() => {
@@ -461,7 +462,7 @@ onTabChange={(tab) => {
           )}
 
           {activeTab === "tasks" && (
-            <GlobalTasks 
+            <GlobalTasks
               tasks={tasks}
               leads={visibleLeads}
               users={users}
@@ -486,7 +487,7 @@ onTabChange={(tab) => {
               onEditActivity={handleEditActivity}
             />
           )}
-{activeTab === "emails" && (
+          {activeTab === "emails" && (
             <EmailComposer
               activeLeadId={selectedLeadId || undefined}
               onSelectLead={(id) => setSelectedLeadId(id)}
@@ -515,8 +516,8 @@ onTabChange={(tab) => {
             />
           )}
 
-{activeTab === "reports" && (
-<QuoteGenerator 
+          {activeTab === "reports" && (
+            <QuoteGenerator
               quotes={quotes}
               leads={visibleLeads.filter(l => l.statut !== LeadStatus.WON && l.statut !== LeadStatus.LOST)}
               activeLeadId={selectedLeadId}
@@ -527,38 +528,38 @@ onTabChange={(tab) => {
           )}
 
           {activeTab === "dashboards_analysis" && (
-            <AnalyticsPerformance 
+            <AnalyticsPerformance
               leads={visibleLeads}
               users={users}
             />
           )}
 
           {activeTab === "team" && (
-<UserManagement 
+            <UserManagement
               users={users}
               activeUser={activeUser}
               onUpdateUserStatus={handleUpdateUserStatus}
               onUpdateUser={handleUpdateUser}
               onAddUser={handleAddUser}
               onUpdateProfile={async (data) => {
-                const updated = await api<any>(`/users/${activeUser.id}`, { method:"PATCH", body:JSON.stringify(data) });
+                const updated = await api<any>(`/users/${activeUser.id}`, { method: "PATCH", body: JSON.stringify(data) });
                 setActiveUser(toUser(updated));
               }}
               onUpdatePassword={async (currentPassword, newPassword) => {
-                await api<any>(`/users/${activeUser.id}/password`, { method:"PATCH", body:JSON.stringify({ currentPassword, newPassword }) });
+                await api<any>(`/users/${activeUser.id}/password`, { method: "PATCH", body: JSON.stringify({ currentPassword, newPassword }) });
               }}
             />
           )}
 
           {activeTab === "settings" && (
-            <Settings 
+            <Settings
               activeUser={activeUser}
               onUpdateProfile={async (data) => {
-                const updated = await api<any>(`/users/${activeUser.id}`, { method:"PATCH", body:JSON.stringify(data) });
+                const updated = await api<any>(`/users/${activeUser.id}`, { method: "PATCH", body: JSON.stringify(data) });
                 setActiveUser(toUser(updated));
               }}
               onUpdatePassword={async (currentPassword, newPassword) => {
-                await api<any>(`/users/${activeUser.id}/password`, { method:"PATCH", body:JSON.stringify({ currentPassword, newPassword }) });
+                await api<any>(`/users/${activeUser.id}/password`, { method: "PATCH", body: JSON.stringify({ currentPassword, newPassword }) });
               }}
             />
           )}

@@ -3,19 +3,18 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import express from "express";
 import path from "path";
+import express from "express";
 import dotenv from "dotenv";
 import { GoogleGenAI, Type } from "@google/genai";
 import { createServer as createViteServer } from "vite";
+import app from "./src/app.js";
+import prisma from "./src/lib/prisma.js";
 
 // Load environment variables
 dotenv.config();
 
-const app = express();
-const PORT = 3000;
-
-app.use(express.json());
+const PORT = Number(process.env.PORT) || 3000;
 
 // Initialize Gemini SDK with named parameter and user-agent for telemetry
 let ai: GoogleGenAI | null = null;
@@ -37,7 +36,7 @@ if (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== "MY_GEMINI_API_
   console.log("Gemini API key is not configured. Real-time AI will use premium local heuristics.");
 }
 
-// REST API for lead analysis
+// REST API for lead analysis (Registered on the main Express app instance)
 app.post("/api/gemini/analyze-lead", async (req, res) => {
   const { lead, activities } = req.body;
 
@@ -48,7 +47,7 @@ app.post("/api/gemini/analyze-lead", async (req, res) => {
   // If Gemini API is not configured or fails, we fall back to high-fidelity, simulated heuristics
   const fallbackScore = Math.min(100, Math.max(10, Math.round(
     (lead.priorite === "Haute" ? 35 : lead.priorite === "Moyenne" ? 20 : 10) +
-    (lead.valeurEstimee > 100000 ? 25 : lead.valeurEstimee > 40000 ? 15 : 5) +
+    (lead.valeurEstimee > 100005 ? 25 : lead.valeurEstimee > 40005 ? 15 : 5) +
     (lead.source === "Recommandation" ? 20 : lead.source === "Salon professionnel" ? 15 : 5) +
     (activities && activities.length > 2 ? 15 : 5) +
     (lead.notes && lead.notes.length > 50 ? 5 : 0)
@@ -66,13 +65,12 @@ app.post("/api/gemini/analyze-lead", async (req, res) => {
       activities && activities.length === 0 ? "Aucune interaction récente enregistrée. Risque d'inactivité." : "S'assurer de l'adéquation technique pour éviter les décalages de planning.",
       lead.notes && lead.notes.toLowerCase().includes("concurrent") ? "Concurrence active signalée dans les notes." : "Délai de décision qui peut s'allonger en l'absence d'un champion interne."
     ],
-    resumeEchanges: activities && activities.length > 0 
+    resumeEchanges: activities && activities.length > 0
       ? `Historique contenant ${activities.length} interaction(s). Le prospect montre un intérêt marqué notamment lors des échanges initiés par l'équipe.`
       : "Aucun échange significatif n'a été enregistré à ce jour pour ce prospect. Il est urgent d'établir le premier contact."
   };
 
   if (!ai) {
-    // Return high-quality, smart local prediction if Gemini is not set up
     return res.json({
       ...defaultAnalysis,
       isFallback: true,
@@ -150,7 +148,6 @@ Répondez exclusivement avec le format JSON sans formater de code markdown comme
     });
   } catch (error) {
     console.error("Gemini API error during lead analysis:", error);
-    // Return robust fallback in case of errors
     return res.json({
       ...defaultAnalysis,
       isFallback: true,
@@ -159,7 +156,7 @@ Répondez exclusivement avec le format JSON sans formater de code markdown comme
   }
 });
 
-// Serve API check
+// Serve API check (Registered on the main Express app instance)
 app.get("/api/health", (req, res) => {
   res.json({ status: "healthy", isGeminiActive: !!ai });
 });
@@ -180,9 +177,21 @@ async function start() {
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
+  const serverInstance = app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running at http://0.0.0.0:${PORT}`);
   });
+
+  async function shutdown() {
+    console.log("Shutting down database client...");
+    await prisma.$disconnect();
+    serverInstance.close(() => {
+      console.log("Server closed.");
+      process.exit(0);
+    });
+  }
+
+  process.on("SIGINT", shutdown);
+  process.on("SIGTERM", shutdown);
 }
 
 start().catch((err) => {

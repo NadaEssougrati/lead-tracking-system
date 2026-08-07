@@ -5,7 +5,6 @@ import compression from "compression";
 import cookieParser from "cookie-parser";
 import morgan from "morgan";
 import path from "path";
-import rateLimit from "express-rate-limit";
 import authRoutes from "./routes/auth.routes.js";
 import usersRoutes from "./routes/users.routes.js";
 import leadsRoutes from "./routes/leads.routes.js";
@@ -25,6 +24,10 @@ const allowedOrigins = new Set([
   "http://localhost:3000",
   "http://127.0.0.1:5000",
   "http://localhost:5000",
+  "http://127.0.0.1:5173",
+  "http://localhost:5173",
+  "http://127.0.0.1:5174",
+  "http://localhost:5174",
 ]);
 
 const corsOptions = {
@@ -49,13 +52,6 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(morgan("dev"));
-
-app.use(rateLimit({ 
-  windowMs: 15 * 60 * 1000, 
-  max: 300, 
-  standardHeaders: true, 
-  legacyHeaders: false 
-}));
 
 app.use("/uploads", express.static(path.resolve(process.env.UPLOAD_PATH || "uploads")));
 

@@ -29,6 +29,7 @@ interface UserManagementProps {
   users: User[];
   activeUser: User;
   onUpdateUserStatus: (id: string, active: boolean) => void;
+  onUpdateUser?: (id: string, data: { nom?: string; email?: string; telephone?: string; role?: Role }) => Promise<void>;
   onAddUser: (user: Omit<User, "id"> & { motDePasse: string }) => Promise<void>;
   onUpdateProfile: (data: { nom?: string; email?: string; telephone?: string; avatar?: string }) => Promise<void>;
   onUpdatePassword: (currentPassword: string, newPassword: string) => Promise<void>;

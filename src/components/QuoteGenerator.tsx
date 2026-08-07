@@ -24,6 +24,7 @@ import { Lead, Quote, User as UserType } from "../types";
 interface QuoteGeneratorProps {
   quotes: Quote[];
   leads: Lead[];
+  activeLeadId?: string | null;
   onCreateQuote: (quote: Omit<Quote, "id" | "reference">) => void;
   onUpdateQuoteStatus: (id: string, statut: Quote["statut"]) => void;
   activeUser: UserType;
@@ -32,11 +33,18 @@ interface QuoteGeneratorProps {
 export default function QuoteGenerator({
   quotes,
   leads,
+  activeLeadId,
   onCreateQuote,
   onUpdateQuoteStatus,
   activeUser
 }: QuoteGeneratorProps) {
-  const [selectedLeadId, setSelectedLeadId] = useState("");
+  const [selectedLeadId, setSelectedLeadId] = useState(activeLeadId || "");
+
+  React.useEffect(() => {
+    if (activeLeadId) {
+      setSelectedLeadId(activeLeadId);
+    }
+  }, [activeLeadId]);
   
   // New quote line items state
   const [articles, setArticles] = useState<Array<{ description: string; quantite: number; prixUnitaire: number }>>([
