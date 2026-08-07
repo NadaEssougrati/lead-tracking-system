@@ -14,12 +14,13 @@ import {
   Lead, 
   Activity, 
   Task, 
-  SystemNotification, 
   Quote 
 } from "./types";
 import { api, login, setAccessToken } from "./api";
+import { Eye, EyeOff } from "lucide-react";
 
 import Sidebar, { SidebarTab } from "./components/Sidebar";
+import Header from "./components/Header";
 import DashboardStats from "./components/DashboardStats";
 import PipelineKanban from "./components/PipelineKanban";
 import LeadDetails from "./components/LeadDetails";
@@ -30,12 +31,14 @@ import UserManagement from "./components/UserManagement";
 import ActivitiesLog from "./components/ActivitiesLog";
 import GlobalTasks from "./components/GlobalTasks";
 import AnalyticsPerformance from "./components/AnalyticsPerformance";
+import EmailComposer from "./components/EmailComposer";
 import { usePreferences } from "./AppPreferences";
 
 export default function App() {
   const { t } = usePreferences();
-  const [email, setEmail] = useState("");
-  const [motDePasse, setMotDePasse] = useState("");
+const [email, setEmail] = useState("admin@leedpro.com");
+  const [motDePasse, setMotDePasse] = useState("ChangeMe123!");
+  const [showPassword, setShowPassword] = useState(false);
   const [authError, setAuthError] = useState("");
   const [isAuthenticating, setIsAuthenticating] = useState(Boolean(localStorage.getItem("accessToken")));
   const [isLoading, setIsLoading] = useState(Boolean(localStorage.getItem("accessToken")));
@@ -66,7 +69,7 @@ export default function App() {
     dateEcheance: item.dateEcheance,
     critique: item.critique ?? false
   });
-  const toQuote = (item: any): Quote => ({ ...item, montant:Number(item.montant), statut: ({Envoye:"Envoyé",Accepte:"Accepté",Refuse:"Refusé"}[item.statut] || item.statut) as Quote["statut"], dateEmission:item.dateCreation, dateValidite:item.dateCreation, articles:[] });
+const toQuote = (item: any): Quote => ({ ...item, montant:Number(item.montant), statut: ({Envoye:"Envoyé",Accepte:"Accepté",Refuse:"Refusé"}[item.statut] || item.statut) as Quote["statut"], dateEmission:item.dateCreation, dateValidite:item.dateCreation, articles:Array.isArray(item.lignes) ? item.lignes : [] });
   const toNotification = (item:any): SystemNotification => ({ id:item.id,titre:item.titre,message:item.message,date:item.dateCreation,lue:item.estLue,type:"info" });
 
   const loadData = async () => {
@@ -77,6 +80,22 @@ export default function App() {
   };
 
 useEffect(() => { if (!localStorage.getItem("accessToken")) return; loadData().catch(() => { setAccessToken(null); setAuthError(t("login.sessionExpired")); }).finally(() => { setIsAuthenticating(false); setIsLoading(false); }); }, []);
+
+// Poll notifications so actions performed by other team members
+// (emails sent, tasks added, quotes issued...) appear in real time.
+useEffect(() => {
+  if (!localStorage.getItem("accessToken")) return;
+  const refreshNotifications = async () => {
+    try {
+      const apiNotifications = await api<any[]>("/notifications");
+      setNotifications(apiNotifications.map(toNotification));
+    } catch (e) {
+      // ignore transient polling errors
+    }
+  };
+  const interval = window.setInterval(refreshNotifications, 10000);
+  return () => window.clearInterval(interval);
+}, []);
 
   const handleLogin = async (event: React.FormEvent) => {
     event.preventDefault(); setAuthError(""); setIsAuthenticating(true);
@@ -91,12 +110,13 @@ useEffect(() => { if (!localStorage.getItem("accessToken")) return; loadData().c
     setActiveTab("leads");
   };
 
-  // Add single lead
-  const handleAddLead = async (newLeadData: Omit<Lead, "id" | "dateCreation" | "derniereActivite" | "documents" | "score">) => {
+// Add single lead
+  const handleAddLead = async (newLeadData: Omit<Lead, "id" | "dateCreation" | "derniereActivite" | "documents" | "score"> & { entrepriseId?: string }) => {
     const source = ({ "Site web":"SiteWeb", "Réseaux sociaux":"ReseauxSociaux", Recommandation:"Recommandation", Emailing:"Emailing", "Salon professionnel":"Salon", "Appel téléphonique":"Telephone" }[newLeadData.source] || newLeadData.source);
     const statut = ({ "Nouveau":"Nouveau", "Contacté":"PremierContact", "Qualifié":"Qualification", "Proposition envoyée":"PropositionCommerciale", "Négociation":"Negociation", "Converti (Gagné)":"Gagne", "Perdu":"Perdu" }[newLeadData.statut] || newLeadData.statut);
-    let entrepriseId: string | undefined;
-    if (newLeadData.societe) entrepriseId = (await api<any>("/companies", { method:"POST", body:JSON.stringify({nom:newLeadData.societe}) })).id;
+    let entrepriseId: string | undefined = newLeadData.entrepriseId;
+    // Only create a new company when the user typed a brand-new company name
+    if (newLeadData.societe && !entrepriseId) entrepriseId = (await api<any>("/companies", { method:"POST", body:JSON.stringify({nom:newLeadData.societe}) })).id;
     const created = await api<any>("/leads", { method:"POST", body:JSON.stringify({ ...newLeadData, source, statut, entrepriseId, societe:undefined }) });
     setLeads((current) => [toLead(created), ...current]);
   };
@@ -221,39 +241,14 @@ useEffect(() => { if (!localStorage.getItem("accessToken")) return; loadData().c
       auteur: activeUser.nom,
       description: `Changement de statut rapide de l'opportunité commerciale vers : '${newStatus}'`
     });
-
-    // Notify users
-    const leadObj = leads.find(l => l.id === id);
-    const newNotif: SystemNotification = {
-      id: `notif-${Date.now()}`,
-      titre: "Étape Pipeline mise à jour",
-      message: `L'opportunité '${leadObj?.societe}' est passée à l'état : ${newStatus}.`,
-      date: new Date().toISOString(),
-      lue: false,
-      type: "info"
-    };
-    setNotifications([newNotif, ...notifications]);
   };
 
-  // Create quote (devis)
-  const handleCreateQuote = async (quoteData: Omit<Quote, "id" | "reference">) => {
-    const serial = `DEV-2026-${String(quotes.length + 1).padStart(4, "0")}`;
+// Create quote (devis)
+const handleCreateQuote = async (quoteData: Omit<Quote, "id" | "reference">) => {
     const statut = ({ "Envoyé":"Envoye", "Accepté":"Accepte", "Refusé":"Refuse" }[quoteData.statut] || quoteData.statut);
-    const created = await api<any>("/quotes", { method:"POST", body:JSON.stringify({leadId:quoteData.leadId, reference:serial, montant:quoteData.montant, statut}) });
+const created = await api<any>("/quotes", { method:"POST", body:JSON.stringify({leadId:quoteData.leadId, montant:quoteData.montant, statut, lignes:quoteData.articles || []}) });
     const newQuote = toQuote(created);
     setQuotes((current) => [newQuote, ...current]);
-
-    // Notify user
-    const lead = leads.find(l => l.id === quoteData.leadId);
-    const newNotif: SystemNotification = {
-      id: `notif-${Date.now()}`,
-      titre: "Proposition commerciale générée",
-      message: `Nouveau devis ${serial} (${quoteData.montant.toLocaleString('fr-FR')} €) émis pour ${lead?.societe}.`,
-      date: new Date().toISOString(),
-      lue: false,
-      type: "success"
-    };
-    setNotifications([newNotif, ...notifications]);
   };
 
   // Update quote status
@@ -263,9 +258,23 @@ useEffect(() => { if (!localStorage.getItem("accessToken")) return; loadData().c
     setQuotes((current) => current.map(q => q.id === id ? { ...q, statut: newStatus } : q));
   };
 
-  // Toggle user status
+// Toggle user status
   const handleUpdateUserStatus = async (id: string, active: boolean) => {
     const saved = await api<any>(`/users/${id}`, { method:"PATCH", body:JSON.stringify({actif:active}) });
+    setUsers((current) => current.map(user => user.id === id ? toUser(saved) : user));
+  };
+
+  // Update user (name, email, phone, role) — admin only
+  const handleUpdateUser = async (id: string, data: { nom?: string; email?: string; telephone?: string; role?: Role }) => {
+    const nom = data.nom || "";
+    const [prenom, ...nomParts] = nom.trim().split(/\s+/);
+    const role = data.role === Role.MARKETING ? "AgentMarketing" : data.role;
+    const payload: any = {};
+    if (data.nom !== undefined) { payload.prenom = nomParts.length ? prenom : "Utilisateur"; payload.nom = nomParts.join(" ") || prenom; }
+    if (data.email !== undefined) payload.email = data.email;
+    if (data.telephone !== undefined) payload.telephone = data.telephone;
+    if (data.role !== undefined) payload.role = role;
+    const saved = await api<any>(`/users/${id}`, { method:"PATCH", body:JSON.stringify(payload) });
     setUsers((current) => current.map(user => user.id === id ? toUser(saved) : user));
   };
 
@@ -310,12 +319,22 @@ useEffect(() => { if (!localStorage.getItem("accessToken")) return; loadData().c
   );
 
   // Clear unread notifications
-  const handleClearNotifications = () => {
-    setNotifications([]);
+  const handleClearNotifications = async () => {
+    try {
+      await api("/notifications", { method: "DELETE" });
+      setNotifications([]);
+    } catch (e) {
+      console.error("Erreur lors de la suppression des notifications", e);
+    }
   };
 
-  const handleMarkNotificationAsRead = (id: string) => {
+  const handleMarkNotificationAsRead = async (id: string) => {
     setNotifications(notifications.map(n => n.id === id ? { ...n, lue: true } : n));
+    try {
+      await api(`/notifications/${id}/read`, { method: "PATCH" });
+    } catch (e) {
+      console.error("Erreur lors de la lecture de la notification", e);
+    }
   };
 
 // Determine page title
@@ -350,7 +369,14 @@ if (isLoading) return <div className="min-h-screen grid place-items-center bg-sl
         <div><h1 className="text-2xl font-bold text-slate-800">{t("login.title")}</h1><p className="mt-1 text-sm text-slate-500">{t("login.subtitle")}</p></div>
         {authError && <p className="rounded-lg bg-rose-50 p-3 text-sm text-rose-700">{authError}</p>}
         <label className="block text-sm font-medium text-slate-700">{t("login.email")}<input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="mt-1 w-full rounded-lg border border-slate-300 p-2.5" /></label>
-        <label className="block text-sm font-medium text-slate-700">{t("login.password")}<input required type="password" value={motDePasse} onChange={(e) => setMotDePasse(e.target.value)} className="mt-1 w-full rounded-lg border border-slate-300 p-2.5" /></label>
+        <label className="block text-sm font-medium text-slate-700">{t("login.password")}
+          <span className="relative block">
+            <input required type={showPassword ? "text" : "password"} value={motDePasse} onChange={(e) => setMotDePasse(e.target.value)} className="mt-1 w-full rounded-lg border border-slate-300 p-2.5 pr-10" />
+            <button type="button" onClick={() => setShowPassword((v) => !v)} className="absolute right-2 top-[calc(0.625rem+4px)] text-slate-500 hover:text-slate-700 cursor-pointer" title={showPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"}>
+              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
+          </span>
+        </label>
         <button disabled={isAuthenticating} className="w-full rounded-lg bg-blue-600 py-2.5 font-semibold text-white disabled:opacity-60">{isAuthenticating ? t("login.connecting") : t("login.button")}</button>
       </form>
     </main>
@@ -361,8 +387,10 @@ return (
       {/* 1. Sidebar Left */}
       <Sidebar 
         activeTab={activeTab} 
-        onTabChange={(tab) => {
+onTabChange={(tab) => {
           setActiveTab(tab);
+          // clear selected lead when navigating away from lead detail views
+          setSelectedLeadId(null);
           // reset search term when switching tabs
           setSearchTerm("");
         }}
@@ -373,18 +401,27 @@ return (
 
       {/* 2. Main Workstation */}
       <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Header Top Bar */}
+        <Header 
+          activeUser={activeUser}
+          notifications={notifications}
+          onMarkNotificationAsRead={handleMarkNotificationAsRead}
+          onClearNotifications={handleClearNotifications}
+          searchTerm={activeTab === "dashboard" || activeTab === "opportunities" ? searchTerm : undefined as any}
+          onSearchChange={setSearchTerm}
+          currentPageTitle={getPageTitle()}
+        />
+
         {/* Dynamic workspace router */}
-        <main className="flex-1 overflow-hidden flex flex-col bg-slate-50 dark:bg-slate-950">
+        <main className="flex-1 overflow-hidden flex flex-col">
           {activeTab === "dashboard" && (
-            <div className="flex-1 overflow-y-auto p-6 max-h-screen bg-slate-50 dark:bg-slate-950">
-              <div className="max-w-7xl mx-auto w-full">
-                <DashboardStats 
-                  leads={filteredLeadsForSearch} 
-                  users={users}
-                  activities={activities}
-                  onSelectLead={handleSelectLead} 
-                />
-              </div>
+            <div className="flex-1 overflow-y-auto p-6 max-h-[calc(100vh-4rem)]">
+              <DashboardStats 
+                leads={filteredLeadsForSearch} 
+                users={users}
+                activities={activities}
+                onSelectLead={handleSelectLead} 
+              />
             </div>
           )}
 
@@ -442,24 +479,26 @@ return (
               leads={visibleLeads}
               users={users}
               activeUser={activeUser}
-              defaultTypeFilter={"Appel"}
+              defaultTypeFilter={ActivityType.CALL}
               activeLeadId={selectedLeadId || undefined}
               onAddActivity={handleAddActivity}
               onDeleteActivity={handleDeleteActivity}
               onEditActivity={handleEditActivity}
             />
           )}
-          {activeTab === "emails" && (
-            <ActivitiesLog
-              activities={activities}
-              leads={visibleLeads}
-              users={users}
-              activeUser={activeUser}
-              defaultTypeFilter={"Email"}
+{activeTab === "emails" && (
+            <EmailComposer
               activeLeadId={selectedLeadId || undefined}
-              onAddActivity={handleAddActivity}
-              onDeleteActivity={handleDeleteActivity}
-              onEditActivity={handleEditActivity}
+              onSelectLead={(id) => setSelectedLeadId(id)}
+              onEmailSent={async () => {
+                // Refresh activities so the exchanges count reflects the newly sent email
+                try {
+                  const apiActivities = await api<any[]>("/activities");
+                  setActivities(apiActivities.map(toActivity));
+                } catch (e) {
+                  console.error("Erreur lors du rafraîchissement des activités", e);
+                }
+              }}
             />
           )}
           {activeTab === "meetings" && (
@@ -468,7 +507,7 @@ return (
               leads={visibleLeads}
               users={users}
               activeUser={activeUser}
-              defaultTypeFilter={"Rendez-vous"}
+              defaultTypeFilter={ActivityType.MEETING}
               activeLeadId={selectedLeadId || undefined}
               onAddActivity={handleAddActivity}
               onDeleteActivity={handleDeleteActivity}
@@ -476,10 +515,11 @@ return (
             />
           )}
 
-          {activeTab === "reports" && (
+{activeTab === "reports" && (
 <QuoteGenerator 
               quotes={quotes}
               leads={visibleLeads.filter(l => l.statut !== LeadStatus.WON && l.statut !== LeadStatus.LOST)}
+              activeLeadId={selectedLeadId}
               onCreateQuote={handleCreateQuote}
               onUpdateQuoteStatus={handleUpdateQuoteStatus}
               activeUser={activeUser}
@@ -494,10 +534,11 @@ return (
           )}
 
           {activeTab === "team" && (
-            <UserManagement 
+<UserManagement 
               users={users}
               activeUser={activeUser}
               onUpdateUserStatus={handleUpdateUserStatus}
+              onUpdateUser={handleUpdateUser}
               onAddUser={handleAddUser}
               onUpdateProfile={async (data) => {
                 const updated = await api<any>(`/users/${activeUser.id}`, { method:"PATCH", body:JSON.stringify(data) });
