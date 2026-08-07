@@ -22,12 +22,7 @@ const THEME_KEY = "crm_theme";
 
 function readStoredLanguage(): Language {
   const stored = localStorage.getItem(LANG_KEY) as Language | null;
-  if (stored === "fr" || stored === "en" || stored === "ar") return stored;
-  const browserLang = navigator.language?.split("-")[0];
-  if (browserLang === "fr" || browserLang === "en" || browserLang === "ar") {
-    return browserLang as Language;
-  }
-  return "fr";
+  return stored === "fr" || stored === "en" || stored === "ar" ? stored : "fr";
 }
 
 function readStoredTheme(): ThemeMode {
