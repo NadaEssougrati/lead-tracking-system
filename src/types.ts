@@ -136,9 +136,3 @@ export interface Quote {
     prixUnitaire: number;
   }>;
 }
-
-export interface LoginFormState {
-  username: string;
-  password: string;
-}
-
