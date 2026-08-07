@@ -143,6 +143,10 @@ export default function EmailComposer({
       alert("Veuillez choisir un destinataire.");
       return;
     }
+    if (!selectedLead.email) {
+      alert("Ce destinataire n'a pas d'adresse email configurée.");
+      return;
+    }
     if (!subject || !body) {
       alert("Le sujet et le contenu sont obligatoires.");
       return;
@@ -150,7 +154,7 @@ export default function EmailComposer({
 
     setIsSending(true);
     try {
-      // Log as an activity in CRM
+      // 1. Log as an activity in CRM
       await api("/activities", {
         method: "POST",
         body: JSON.stringify({
@@ -161,7 +165,10 @@ export default function EmailComposer({
         })
       });
 
-      alert("Email envoyé et enregistré dans l'historique de l'opportunité !");
+      // 2. Open local mail client via mailto link
+      const mailtoUrl = `mailto:${encodeURIComponent(selectedLead.email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+      window.location.href = mailtoUrl;
+
       setSubject("");
       setBody("");
       onEmailSent();

@@ -195,6 +195,8 @@ model Notification {
   dateCreation  DateTime    @default(now())
   utilisateurId String      @db.Uuid
   utilisateur   Utilisateur @relation(fields: [utilisateurId], references: [id], onDelete: Cascade)
+  leadId        String?
+  taskId        String?
 
   @@index([utilisateurId, estLue])
 }

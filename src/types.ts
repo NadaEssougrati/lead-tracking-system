@@ -120,6 +120,8 @@ export interface SystemNotification {
   date: string;
   lue: boolean;
   type: "info" | "warning" | "success";
+  leadId?: string;
+  taskId?: string;
 }
 
 export interface Quote {

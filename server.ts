@@ -6,6 +6,7 @@
 import path from "path";
 import express from "express";
 import dotenv from "dotenv";
+import cron from "node-cron";
 import { GoogleGenAI, Type } from "@google/genai";
 import { createServer as createViteServer } from "vite";
 import app from "./src/app.js";
@@ -161,6 +162,79 @@ app.get("/api/health", (req, res) => {
   res.json({ status: "healthy", isGeminiActive: !!ai });
 });
 
+// Task deadline background scheduler
+function startTaskDeadlineScheduler() {
+  console.log("Task deadline scheduler initialized (Running every 1 minute).");
+  cron.schedule("* * * * *", async () => {
+    try {
+      const now = new Date();
+      const oneDayFromNow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+
+      // Query incomplete tasks
+      const tasks = await prisma.tache.findMany({
+        where: {
+          statut: {
+            notIn: ["Terminee"]
+          }
+        }
+      });
+
+      for (const task of tasks) {
+        const deadline = new Date(task.dateEcheance);
+
+        // 1. Overdue task alert
+        if (deadline < now) {
+          const uniqueTitle = `Retard tâche : ${task.titre}`;
+          const existing = await prisma.notification.findFirst({
+            where: {
+              utilisateurId: task.utilisateurId,
+              titre: uniqueTitle
+            }
+          });
+
+          if (!existing) {
+            await prisma.notification.create({
+              data: {
+                titre: uniqueTitle,
+                message: `La tâche "${task.titre}" est en retard (échéance passée le ${deadline.toLocaleDateString("fr-FR")}).`,
+                utilisateurId: task.utilisateurId,
+                taskId: task.id,
+                leadId: task.leadId
+              }
+            });
+            console.log(`[Scheduler] Overdue task notification triggered for task: ${task.titre}`);
+          }
+        }
+        // 2. Deadline approaching within 24 hours alert
+        else if (deadline <= oneDayFromNow) {
+          const uniqueTitle = `Échéance proche : ${task.titre}`;
+          const existing = await prisma.notification.findFirst({
+            where: {
+              utilisateurId: task.utilisateurId,
+              titre: uniqueTitle
+            }
+          });
+
+          if (!existing) {
+            await prisma.notification.create({
+              data: {
+                titre: uniqueTitle,
+                message: `La tâche "${task.titre}" arrive à échéance dans moins de 24 heures (le ${deadline.toLocaleDateString("fr-FR")}).`,
+                utilisateurId: task.utilisateurId,
+                taskId: task.id,
+                leadId: task.leadId
+              }
+            });
+            console.log(`[Scheduler] Approaching task notification triggered for task: ${task.titre}`);
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Scheduler error processing task deadlines:", err);
+    }
+  });
+}
+
 // Setup Vite Dev Server / Static files
 async function start() {
   if (process.env.NODE_ENV !== "production") {
@@ -176,6 +250,9 @@ async function start() {
       res.sendFile(path.join(distPath, "index.html"));
     });
   }
+
+  // Start background task scheduler
+  startTaskDeadlineScheduler();
 
   const serverInstance = app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running at http://0.0.0.0:${PORT}`);

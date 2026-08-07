@@ -3,16 +3,17 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { 
   Bell, 
   Search, 
-  ShieldCheck, 
   CheckCircle2, 
   AlertTriangle, 
   Info, 
   LogOut,
-  UserRound
+  UserRound,
+  Sun,
+  Moon
 } from "lucide-react";
 import { User, SystemNotification } from "../types";
 import { setAccessToken } from "../api";
@@ -38,8 +39,21 @@ export default function Header({
   currentPageTitle,
 }: HeaderProps) {
   const [showNotifDropdown, setShowNotifDropdown] = useState(false);
-  const { t } = usePreferences();
+  const { t, theme, setTheme } = usePreferences();
   const unreadCount = notifications.filter((n) => !n.lue).length;
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close notifications dropdown on outside click
+  useEffect(() => {
+    if (!showNotifDropdown) return;
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowNotifDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showNotifDropdown]);
 
   const handleLogout = () => {
     setAccessToken(null);
@@ -69,19 +83,21 @@ export default function Header({
       </div>
 
       <div className="flex items-center gap-6">
-        {/* Active Role / Profil Bar */}
-        <div className="flex items-center gap-2 bg-slate-55 px-3 py-1.5 rounded-lg border border-slate-200">
-          <div className="flex items-center gap-1.5 text-xs text-slate-600 font-medium dark:text-slate-300">
-            <ShieldCheck className="h-4 w-4 text-emerald-500" />
-            <span>{activeUser.role}</span>
-          </div>
-        </div>
+        
+        {/* Theme Toggle Button */}
+        <button
+          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+          className="p-1.5 rounded-full hover:bg-slate-100 text-slate-500 hover:text-amber-500 transition-colors dark:hover:bg-slate-800 dark:text-slate-350 cursor-pointer"
+          title={theme === "dark" ? "Mode clair" : "Mode sombre"}
+        >
+          {theme === "dark" ? <Sun className="h-5 w-5 text-amber-500" /> : <Moon className="h-5 w-5" />}
+        </button>
 
         {/* Notifications Bell */}
-        <div className="relative">
+        <div className="relative" ref={dropdownRef}>
           <button
             onClick={() => setShowNotifDropdown(!showNotifDropdown)}
-            className="p-1.5 rounded-full hover:bg-slate-100 text-slate-600 hover:text-slate-900 transition-colors relative dark:hover:bg-slate-800 dark:text-slate-300"
+            className="p-1.5 rounded-full hover:bg-slate-100 text-slate-600 hover:text-slate-900 transition-colors relative dark:hover:bg-slate-800 dark:text-slate-350"
             title={t("header.notifications")}
           >
             <Bell className="h-5 w-5" />
@@ -114,7 +130,10 @@ export default function Header({
                   notifications.map((notif) => (
                     <div
                       key={notif.id}
-                      onClick={() => onMarkNotificationAsRead(notif.id)}
+                      onClick={() => {
+                        onMarkNotificationAsRead(notif.id);
+                        setShowNotifDropdown(false);
+                      }}
                       className={`p-3 hover:bg-slate-50 transition-colors cursor-pointer flex gap-3 dark:hover:bg-slate-800/60 ${
                         !notif.lue ? "bg-slate-100/50 font-medium dark:bg-slate-800/30" : ""
                       }`}
@@ -153,7 +172,7 @@ export default function Header({
           </div>
           <button
             onClick={handleLogout}
-            className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-rose-600 transition-colors dark:hover:bg-slate-800"
+            className="p-1.5 rounded-lg hover:bg-slate-100 text-rose-500 hover:text-rose-600 transition-colors dark:hover:bg-slate-800 cursor-pointer"
             title={t("header.logout")}
           >
             <LogOut className="h-4 w-4" />

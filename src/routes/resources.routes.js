@@ -158,6 +158,21 @@ router.post("/tasks", async (req, res, next) => {
         utilisateur: { select: { id: true, nom: true, prenom: true } }
       }
     });
+
+    try {
+      await prisma.notification.create({
+        data: {
+          titre: 'Nouvelle tâche attribuée',
+          message: `Une nouvelle tâche "${task.titre}" vous a été attribuée.`,
+          utilisateurId: task.utilisateurId,
+          taskId: task.id,
+          leadId: task.leadId
+        }
+      });
+    } catch (notifErr) {
+      console.error("Failed to create task notification:", notifErr);
+    }
+
     res.status(201).json({ success: true, data: task });
   } catch (e) {
     next(e);

@@ -168,7 +168,8 @@ router.post("/:id/assign", allowRoles("Administrateur", "Manager"), async (req, 
       data: {
         titre: 'Nouveau lead attribué',
         message: `Le lead ${lead.prenom} ${lead.nom} vous a été attribué.`,
-        utilisateurId: commercialId
+        utilisateurId: commercialId,
+        leadId: lead.id
       }
     });
     res.json({ success: true, data: lead });

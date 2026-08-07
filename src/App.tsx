@@ -33,6 +33,7 @@ import ActivitiesLog from "./components/ActivitiesLog";
 import GlobalTasks from "./components/GlobalTasks";
 import AnalyticsPerformance from "./components/AnalyticsPerformance";
 import EmailComposer from "./components/EmailComposer";
+import SystemSettings from "./components/SystemSettings";
 import { usePreferences } from "./AppPreferences";
 
 export default function App() {
@@ -52,6 +53,15 @@ export default function App() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [notifications, setNotifications] = useState<SystemNotification[]>([]);
+  const [toasts, setToasts] = useState<Array<{ id: string; titre: string; message: string }>>([]);
+
+  const addToast = (titre: string, message: string) => {
+    const id = Math.random().toString();
+    setToasts((prev) => [...prev, { id, titre, message }]);
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id));
+    }, 5000);
+  };
 
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -71,7 +81,7 @@ export default function App() {
     critique: item.critique ?? false
   });
   const toQuote = (item: any): Quote => ({ ...item, montant: Number(item.montant), statut: ({ Envoye: "Envoyé", Accepte: "Accepté", Refuse: "Refusé" }[item.statut] || item.statut) as Quote["statut"], dateEmission: item.dateCreation, dateValidite: item.dateCreation, articles: Array.isArray(item.lignes) ? item.lignes : [] });
-  const toNotification = (item: any): SystemNotification => ({ id: item.id, titre: item.titre, message: item.message, date: item.dateCreation, lue: item.estLue, type: "info" });
+  const toNotification = (item: any): SystemNotification => ({ id: item.id, titre: item.titre, message: item.message, date: item.dateCreation, lue: item.estLue, type: "info", leadId: item.leadId, taskId: item.taskId });
 
   const loadData = async () => {
     const [me, apiUsers, apiLeads, apiActivities, apiTasks, apiQuotes, apiNotifications] = await Promise.all([
@@ -86,14 +96,30 @@ export default function App() {
   // (emails sent, tasks added, quotes issued...) appear in real time.
   useEffect(() => {
     if (!localStorage.getItem("accessToken")) return;
+    let knownIds = new Set<string>();
+
     const refreshNotifications = async () => {
       try {
         const apiNotifications = await api<any[]>("/notifications");
-        setNotifications(apiNotifications.map(toNotification));
+        const mapped = apiNotifications.map(toNotification);
+
+        // Display on-screen toast popup for newly polled unread notifications
+        if (knownIds.size > 0) {
+          const newUnread = mapped.filter(n => !n.lue && !knownIds.has(n.id));
+          newUnread.forEach(n => {
+            addToast(n.titre, n.message);
+          });
+        }
+
+        // Populate/Update set of known notification IDs
+        mapped.forEach(n => knownIds.add(n.id));
+        setNotifications(mapped);
       } catch (e) {
         // ignore transient polling errors
       }
     };
+
+    refreshNotifications(); // fetch immediately on mount
     const interval = window.setInterval(refreshNotifications, 10000);
     return () => window.clearInterval(interval);
   }, []);
@@ -330,11 +356,19 @@ export default function App() {
   };
 
   const handleMarkNotificationAsRead = async (id: string) => {
+    const notif = notifications.find(n => n.id === id);
     setNotifications(notifications.map(n => n.id === id ? { ...n, lue: true } : n));
     try {
       await api(`/notifications/${id}/read`, { method: "PATCH" });
     } catch (e) {
       console.error("Erreur lors de la lecture de la notification", e);
+    }
+    if (notif) {
+      if (notif.taskId) {
+        setActiveTab("tasks");
+      } else if (notif.leadId) {
+        handleSelectLead(notif.leadId);
+      }
     }
   };
 
@@ -349,7 +383,8 @@ export default function App() {
       case "tasks": return t("header.title.tasks");
       case "reports": return t("header.title.reports");
       case "team": return t("header.title.team");
-      case "settings": return t("header.title.settings");
+      case "settings": return t("nav.accountSettings");
+      case "system_settings": return t("nav.systemSettings");
       default: return "Tracking Lead System";
     }
   };
@@ -563,7 +598,27 @@ export default function App() {
               }}
             />
           )}
+
+          {activeTab === "system_settings" && (
+            <SystemSettings />
+          )}
         </main>
+      </div>
+
+      {/* Toast Notification Popups */}
+      <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-3 max-w-sm pointer-events-none">
+        {toasts.map((toast) => (
+          <div
+            key={toast.id}
+            className="pointer-events-auto bg-slate-900/95 text-white rounded-xl shadow-2xl border border-slate-700/50 p-4 flex flex-col gap-1 backdrop-blur-md animate-slide-in-right max-w-xs"
+          >
+            <div className="flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-blue-500 animate-pulse"></span>
+              <p className="text-xs font-bold tracking-wide uppercase text-blue-400">{toast.titre}</p>
+            </div>
+            <p className="text-[11px] text-slate-300 font-medium leading-relaxed mt-0.5">{toast.message}</p>
+          </div>
+        ))}
       </div>
     </div>
   );
