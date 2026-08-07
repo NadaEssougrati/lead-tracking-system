@@ -9,7 +9,7 @@
   --font-mono: "JetBrains Mono", monospace;
 }
 
-/* Base resets & custom modern dark scrollbars for the CRM */
+/* Base resets & custom modern scrollbars for the CRM */
 * {
   scrollbar-width: thin;
   scrollbar-color: #334155 #0f172a;
@@ -35,8 +35,8 @@
 }
 
 body {
-  background-color: #020617;
-  color: #f1f5f9;
+  background-color: #f8fafc;
+  color: #1e293b;
   font-family: var(--font-sans);
 }
 
@@ -44,98 +44,252 @@ h1, h2, h3, h4, .font-display {
   font-family: var(--font-display);
 }
 
-/* Premium dark mode contrast overrides */
-.dark {
-  color-scheme: dark;
-  
-  .bg-white {
-    background-color: #0f172a !important; /* slate-900 */
-  }
-  .bg-slate-50 {
-    background-color: #020617 !important; /* slate-950 */
-  }
-  .bg-slate-100 {
-    background-color: #1e293b !important; /* slate-800 */
-  }
-  .bg-slate-100\/50 {
-    background-color: rgba(30, 41, 59, 0.4) !important;
-  }
-  
-  .border-slate-100 {
-    border-color: #1e293b !important; /* slate-800 */
-  }
-  .border-slate-200 {
-    border-color: #334155 !important; /* slate-700 */
-  }
-  .border-slate-200\/60 {
-    border-color: rgba(51, 65, 85, 0.5) !important;
-  }
-  
-  .text-slate-900 {
-    color: #f8fafc !important; /* slate-50 */
-  }
-  .text-slate-850 {
-    color: #f1f5f9 !important; /* slate-100 */
-  }
-  .text-slate-800 {
-    color: #f1f5f9 !important; /* slate-100 */
-  }
-  .text-slate-750 {
-    color: #cbd5e1 !important; /* slate-300 */
-  }
-  .text-slate-700 {
-    color: #cbd5e1 !important; /* slate-300 */
-  }
-  .text-slate-600 {
-    color: #94a3b8 !important; /* slate-400 */
-  }
-  .text-slate-500 {
-    color: #94a3b8 !important; /* slate-400 */
-  }
-  .text-slate-400 {
-    color: #64748b !important; /* slate-500 */
+/* ============================================================
+   DARK MODE — Full application theming
+   Maps every light-mode utility class to a dark equivalent.
+   Cards, panels, sidebars, tables, forms and text all adapt.
+   ============================================================ */
+@layer base {
+  html.dark body {
+    background-color: #020617; /* slate-950 */
+    color: #e2e8f0; /* slate-200 */
   }
 
-  input, select, textarea {
-    background-color: #1e293b !important; /* slate-800 */
-    border-color: #334155 !important; /* slate-700 */
-    color: #f8fafc !important;
+  /* Base surface for the whole app area */
+  html.dark #root {
+    background-color: #020617;
   }
-  input::placeholder, textarea::placeholder {
-    color: #64748b !important;
+}
+
+@layer utilities {
+  /* ---------- SURFACES (cards / panels / modals) ---------- */
+  .dark .bg-white {
+    background-color: #0f172a; /* slate-900 */
   }
-  input:focus, select:focus, textarea:focus {
-    border-color: #3b82f6 !important;
+  .dark .bg-slate-50 {
+    background-color: #1e293b; /* slate-800 */
   }
-  
-  .hover\:bg-slate-50\/50:hover {
-    background-color: rgba(30, 41, 59, 0.35) !important;
+  .dark .bg-slate-100 {
+    background-color: #293548; /* slate-800/200 */
   }
-  .hover\:bg-slate-50:hover {
-    background-color: #1e293b !important;
+  .dark .bg-slate-200 {
+    background-color: #334155; /* slate-700 */
   }
-  .hover\:bg-slate-100:hover {
-    background-color: #334155 !important;
+
+  /* ---------- BORDERS ---------- */
+  .dark .border-slate-100 {
+    border-color: #1e293b; /* slate-800 */
   }
-  
-  .bg-emerald-50 {
-    background-color: rgba(6, 95, 70, 0.25) !important;
-    color: #34d399 !important;
-    border-color: rgba(16, 185, 129, 0.25) !important;
+  .dark .border-slate-200 {
+    border-color: #334155; /* slate-700 */
   }
-  .bg-amber-50 {
-    background-color: rgba(146, 64, 14, 0.25) !important;
-    color: #fbbf24 !important;
-    border-color: rgba(245, 158, 11, 0.25) !important;
+  .dark .border-slate-300 {
+    border-color: #475569; /* slate-600 */
   }
-  
+  .dark .border-slate-150,
+  .dark .border-slate-250 {
+    border-color: #2a3749;
+  }
+  .dark .divide-slate-100 > :not([hidden]) ~ :not([hidden]) {
+    border-color: #1e293b;
+  }
+  .dark .divide-slate-200 > :not([hidden]) ~ :not([hidden]) {
+    border-color: #334155;
+  }
+
+  /* ---------- TEXT COLOURS ---------- */
+  .dark .text-slate-900 {
+    color: #f1f5f9; /* slate-100 */
+  }
+  .dark .text-slate-850 {
+    color: #e2e8f0; /* slate-200 */
+  }
+  .dark .text-slate-800 {
+    color: #e2e8f0; /* slate-200 */
+  }
+  .dark .text-slate-700 {
+    color: #cbd5e1; /* slate-300 */
+  }
+  .dark .text-slate-600 {
+    color: #94a3b8; /* slate-400 */
+  }
+  .dark .text-slate-500 {
+    color: #94a3b8; /* slate-400 */
+  }
+  .dark .text-slate-400 {
+    color: #9aa8bd;
+  }
+  .dark .text-slate-300 {
+    color: #cbd5e1; /* slate-300 */
+  }
+  .dark .text-slate-950 {
+    color: #f8fafc; /* slate-50 */
+  }
+
+  /* ---------- HOVER STATES ---------- */
+  .dark .hover\:bg-slate-100:hover {
+    background-color: #293548;
+  }
+  .dark .hover\:bg-slate-200:hover {
+    background-color: #334155;
+  }
+  .dark .hover\:bg-slate-50:hover {
+    background-color: #1e293b;
+  }
+  .dark .hover\:bg-white:hover {
+    background-color: #1e293b;
+  }
+
+  /* ---------- FOCUS STATES ---------- */
+  .dark .focus\:bg-white:focus {
+    background-color: #1e293b;
+  }
+
+  /* ---------- INPUTS / FORMS ---------- */
+  .dark input,
+  .dark select,
+  .dark textarea {
+    background-color: #1e293b;
+    border-color: #334155;
+    color: #e2e8f0;
+  }
+  .dark input::placeholder,
+  .dark textarea::placeholder {
+    color: #64748b;
+  }
+
+  /* ---------- GLOBAL CARD SURFACES ---------- */
+  .dark .shadow-sm,
+  .dark .shadow-md,
+  .dark .shadow-lg {
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.5);
+  }
+
+  /* ---------- ACCENT TEXT IN DARK ---------- */
+  .dark .text-blue-600,
+  .dark .text-blue-700 {
+    color: #60a5fa; /* blue-400 */
+  }
+  .dark .text-emerald-600,
+  .dark .text-emerald-700 {
+    color: #34d399; /* emerald-400 */
+  }
+  .dark .text-amber-600,
+  .dark .text-amber-700 {
+    color: #fbbf24; /* amber-400 */
+  }
+  .dark .text-rose-600,
+  .dark .text-rose-700 {
+    color: #fb7185; /* rose-400 */
+  }
+  .dark .text-purple-600 {
+    color: #c084fc; /* purple-400 */
+  }
+  .dark .text-pink-600 {
+    color: #f472b6; /* pink-400 */
+  }
+  .dark .text-indigo-600 {
+    color: #818cf8; /* indigo-400 */
+  }
+
+  /* ---------- ACCENT BACKGROUNDS (soft badges) ---------- */
+  .dark .bg-blue-50 {
+    background-color: rgba(59, 130, 246, 0.12);
+  }
+  .dark .bg-blue-100 {
+    background-color: rgba(59, 130, 246, 0.2);
+  }
+  .dark .bg-emerald-50 {
+    background-color: rgba(16, 185, 129, 0.12);
+  }
+  .dark .bg-amber-50 {
+    background-color: rgba(245, 158, 11, 0.12);
+  }
+  .dark .bg-rose-50 {
+    background-color: rgba(244, 63, 94, 0.12);
+  }
+  .dark .bg-purple-50 {
+    background-color: rgba(168, 85, 247, 0.12);
+  }
+  .dark .bg-indigo-50 {
+    background-color: rgba(99, 102, 241, 0.12);
+  }
+
+  /* ---------- ACCENT BORDERS ---------- */
+  .dark .border-blue-100 {
+    border-color: rgba(59, 130, 246, 0.25);
+  }
+  .dark .border-blue-200 {
+    border-color: rgba(59, 130, 246, 0.35);
+  }
+  .dark .border-emerald-100 {
+    border-color: rgba(16, 185, 129, 0.25);
+  }
+  .dark .border-emerald-200 {
+    border-color: rgba(16, 185, 129, 0.35);
+  }
+  .dark .border-amber-100 {
+    border-color: rgba(245, 158, 11, 0.25);
+  }
+  .dark .border-amber-200 {
+    border-color: rgba(245, 158, 11, 0.35);
+  }
+  .dark .border-rose-200 {
+    border-color: rgba(244, 63, 94, 0.35);
+  }
+.dark .border-purple-200 {
+    border-color: rgba(168, 85, 247, 0.35);
+  }
+}
+
+/* ============================================================
+   PRINT — Quote / Invoice ("Imprimer en PDF")
+   Only the invoice simulation block is printed, nothing else.
+   ============================================================ */
+@media print {
+  body {
+    background: #ffffff !important;
+  }
+
+  body * {
+    visibility: hidden;
+  }
+
+  #invoice-simulation,
+  #invoice-simulation * {
+    visibility: visible;
+  }
+
   #invoice-simulation {
-    background-color: #0f172a !important;
-    color: #f1f5f9 !important;
-    border-color: #334155 !important;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 24px;
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    min-height: 0 !important;
+    background: #ffffff !important;
+    color: #1e293b !important;
   }
-  #invoice-simulation .border-slate-200 {
-    border-color: #334155 !important;
+
+  /* Hide everything outside the invoice */
+  #root > *:not(#invoice-simulation) {
+    display: none !important;
+  }
+
+  /* Hide the on-screen watermark banner when printing */
+  #invoice-simulation .print-hide {
+    display: none !important;
+  }
+
+  /* Force print-friendly colors for the invoice */
+  #invoice-simulation * {
+    color: #1e293b !important;
+    background: transparent !important;
+    box-shadow: none !important;
   }
 }
 
