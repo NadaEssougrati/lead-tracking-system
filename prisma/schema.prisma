@@ -193,6 +193,7 @@ model Devis {
   dateCreation  DateTime    @default(now())
   leadId        String      @db.Uuid
   lead          Lead        @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  lignes        Json?       @default("[]")
 }
 
 model Notification {

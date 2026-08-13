@@ -151,7 +151,9 @@ export default function GlobalTasks({
 
   const getLeadName = (leadId: string) => {
     const lead = leads.find(l => l.id === leadId);
-    return lead ? lead.societe : t("tasks.unknownClient");
+    if (!lead) return t("tasks.unknownClient");
+    const projName = lead.nomProjet || `Opportunité - ${lead.societe || `${lead.prenom} ${lead.nom}`}`;
+    return lead.societe ? `${projName} (${lead.societe})` : projName;
   };
 
   const getTaskTypeBadge = (type?: TaskType) => {
@@ -185,7 +187,10 @@ export default function GlobalTasks({
   };
 
   const visibleTasks = tasks.filter((t) => leads.some((l) => l.id === t.leadId));
-  const clientOptions = leads.map((l) => ({ value: l.id, label: `${l.societe} (${l.prenom} ${l.nom})` }));
+  const clientOptions = leads.map((l) => {
+    const projName = l.nomProjet || `Opportunité - ${l.societe || `${l.prenom} ${l.nom}`}`;
+    return { value: l.id, label: `${projName} (Société : ${l.societe || 'Indépendant'} • Contact : ${l.prenom} ${l.nom})` };
+  });
   const statusOptions = [TaskStatus.TODO, TaskStatus.IN_PROGRESS, TaskStatus.DONE];
   const priorityOptions = [
     { value: "all", label: t("tasks.all") },
@@ -299,9 +304,14 @@ const filterValues = () => {
                   className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-slate-800 cursor-pointer text-xs focus:bg-white focus:outline-none"
                 >
                   <option value="">{t("tasks.chooseClient")}</option>
-                  {leads.map((l) => (
-                    <option key={l.id} value={l.id}>{l.societe} ({l.prenom} {l.nom})</option>
-                  ))}
+                  {leads.map((l) => {
+                    const projName = l.nomProjet || `Opportunité - ${l.societe || `${l.prenom} ${l.nom}`}`;
+                    return (
+                      <option key={l.id} value={l.id}>
+                        {projName} ({l.societe || 'Indépendant'} • {l.prenom} {l.nom})
+                      </option>
+                    );
+                  })}
                 </select>
               </div>
 

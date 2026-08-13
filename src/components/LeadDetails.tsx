@@ -40,7 +40,7 @@ import {
   Send,
   Loader2
 } from "lucide-react";
-import { api, uploadFile, login, setAccessToken, API_URL, API_ROOT } from "../api";
+import { api, uploadFile, login, setAccessToken, API_URL, API_ROOT, sendEmail } from "../api";
 import { 
   Lead, 
   Activity, 
@@ -259,27 +259,19 @@ export default function LeadDetails({
 
     setIsSendingEmail(true);
     try {
-      // 1. Log as activity in CRM
-      await api("/activities", {
-        method: "POST",
-        body: JSON.stringify({
-          type: "Email",
-          dateActivite: new Date().toISOString(),
-          description: `Sujet : ${emailSubject}\n\n${emailBody}`,
-          leadId: lead.id
-        })
+      // 1. Send via backend API using current email configuration (Resend/SMTP)
+      const res = await sendEmail({
+        leadId: lead.id,
+        subject: emailSubject,
+        body: emailBody
       });
 
-      // 2. Open local mail client via mailto
-      const mailtoUrl = `mailto:${encodeURIComponent(lead.email)}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
-      window.location.href = mailtoUrl;
-
-      // 3. Clear and close
+      // 2. Clear and close
       setEmailSubject("");
       setEmailBody("");
       setShowLogModal(null);
 
-      // Refresh activity timeline in profile page
+      // 3. Refresh activity timeline in UI
       onAddActivity({
         leadId: lead.id,
         type: ActivityType.EMAIL,
@@ -290,9 +282,11 @@ export default function LeadDetails({
 
       // Re-run AI analysis
       setTimeout(() => runAiAnalysis(true), 500);
-    } catch (err) {
+
+      alert(res.message || "E-mail envoyé avec succès et enregistré dans l'historique !");
+    } catch (err: any) {
       console.error(err);
-      alert("Erreur lors de l'enregistrement de l'activité.");
+      alert(err.message || "Erreur lors de l'envoi de l'e-mail.");
     } finally {
       setIsSendingEmail(false);
     }
@@ -751,8 +745,11 @@ export default function LeadDetails({
                         </span>
                       </div>
                       
+                      <h4 className="text-xs font-bold text-slate-800 dark:text-slate-205 mb-1.5">
+                        {l.nomProjet || `Opportunité - ${l.prenom} ${l.nom}`}
+                      </h4>
                       <div className="space-y-1">
-                        <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                        <p className="text-[11px] font-medium text-slate-600 dark:text-slate-400">
                           Contact : {l.prenom} {l.nom}
                         </p>
                         <p className="text-[10px] text-slate-400 dark:text-slate-500">
@@ -1009,16 +1006,23 @@ export default function LeadDetails({
                     <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 space-y-1.5">
                       <span className="text-[9px] uppercase font-bold text-slate-450 tracking-wider block">Contacts & Opportunités</span>
                       <div className="space-y-1.5">
-                        {c.leads.map(cl => (
-                          <div key={cl.id} className="text-[11px] text-slate-600 dark:text-slate-400 flex items-start gap-1 flex-wrap">
-                            <span className="font-bold text-slate-800 dark:text-slate-300">{cl.prenom} {cl.nom}</span>
-                            <span className="text-slate-450">({cl.email} | {cl.telephone})</span>
-                            <span className="text-slate-400 dark:text-slate-600">-</span>
-                            <span className="font-bold text-blue-600 dark:text-blue-400">
-                              {cl.valeurEstimee.toLocaleString('fr-FR')} MAD ({translateStatus(cl.statut)})
-                            </span>
-                          </div>
-                        ))}
+                        {c.leads.map(cl => {
+                          const projName = cl.nomProjet || `Opportunité - ${cl.prenom} ${cl.nom}`;
+                          return (
+                            <div key={cl.id} className="text-[11px] text-slate-650 dark:text-slate-400 flex flex-col gap-0.5">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="font-bold text-slate-800 dark:text-slate-205">{projName}</span>
+                                <span className="text-slate-350 dark:text-slate-600">-</span>
+                                <span className="font-bold text-blue-600 dark:text-blue-400">
+                                  {cl.valeurEstimee.toLocaleString('fr-FR')} MAD ({translateStatus(cl.statut)})
+                                </span>
+                              </div>
+                              <span className="text-slate-400 dark:text-slate-500 text-[10px]">
+                                Contact : {cl.prenom} {cl.nom} ({cl.email} | {cl.telephone})
+                              </span>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
 
@@ -1201,8 +1205,8 @@ export default function LeadDetails({
                 <div>
                   <div className="flex items-start justify-between gap-3 mb-2">
                     <div>
-                      <h4 className="font-bold text-slate-900 text-sm">{l.societe}</h4>
-                      <p className="text-slate-500 text-xs">{l.prenom} {l.nom}</p>
+                      <h4 className="font-bold text-slate-900 text-sm">{l.nomProjet || `Opportunité - ${l.societe || `${l.prenom} ${l.nom}`}`}</h4>
+                      <p className="text-slate-500 text-xs">{l.societe ? `${l.societe} • ` : ""}Contact : {l.prenom} {l.nom}</p>
                     </div>
                     <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
                       l.statut === LeadStatus.WON 

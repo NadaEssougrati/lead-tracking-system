@@ -129,7 +129,10 @@ export default function ActivitiesLog({
   };
 
   const filterValues = () => {
-    const clientOptions = leads.map((l) => ({ value: l.id, label: `${l.societe} (${l.prenom} ${l.nom})` }));
+    const clientOptions = leads.map((l) => {
+      const projName = l.nomProjet || `Opportunité - ${l.societe || `${l.prenom} ${l.nom}`}`;
+      return { value: l.id, label: `${projName} (${l.societe || 'Indépendant'} • ${l.prenom} ${l.nom})` };
+    });
     const priorityOptions = [
       { value: "all", label: "Tous" },
       { value: LeadPriority.LOW, label: LeadPriority.LOW },
@@ -290,7 +293,7 @@ export default function ActivitiesLog({
                           )}
                         </div>
                         <p className="text-[10px] text-slate-400 mt-1 dark:text-slate-500">
-                          Pour : {leadObj ? `${leadObj.prenom} ${leadObj.nom} (${leadObj.societe})` : "Client inconnu"}
+                          Pour : {leadObj ? `${leadObj.nomProjet || `Opportunité - ${leadObj.societe}`} (${leadObj.societe || `${leadObj.prenom} ${leadObj.nom}`})` : "Client inconnu"}
                         </p>
                       </div>
                       
@@ -326,9 +329,14 @@ export default function ActivitiesLog({
                   className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-slate-800 cursor-pointer text-xs focus:bg-white focus:outline-none"
                 >
                   <option value="">-- Choisir un client dans le CRM --</option>
-                  {leads.map(l => (
-                    <option key={l.id} value={l.id}>{l.societe} ({l.prenom} {l.nom})</option>
-                  ))}
+                  {leads.map(l => {
+                    const projName = l.nomProjet || `Opportunité - ${l.societe || `${l.prenom} ${l.nom}`}`;
+                    return (
+                      <option key={l.id} value={l.id}>
+                        {projName} ({l.societe || 'Indépendant'} • {l.prenom} {l.nom})
+                      </option>
+                    );
+                  })}
                 </select>
               </div>
 
@@ -508,9 +516,9 @@ export default function ActivitiesLog({
 
                     <div className="pl-10.5 flex flex-wrap gap-2 items-center text-[10px]">
                       {lead && (
-                        <div className="flex items-center gap-1 bg-slate-50 px-2.5 py-0.5 rounded border border-slate-200 text-blue-600 font-semibold">
+                        <div className="flex items-center gap-1 bg-slate-50 px-2.5 py-0.5 rounded border border-slate-200 text-blue-600 font-semibold dark:bg-slate-850 dark:border-slate-800 dark:text-blue-400">
                           <Building className="h-3 w-3 text-blue-500" />
-                          <span>{lead.societe}</span>
+                          <span>{lead.nomProjet || `Opportunité - ${lead.societe || `${lead.prenom} ${lead.nom}`}`} {lead.societe ? `(${lead.societe})` : ""}</span>
                         </div>
                       )}
                       

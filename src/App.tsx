@@ -42,7 +42,7 @@ const getInitialTab = (): SidebarTab => {
   const validTabs: SidebarTab[] = [
     "dashboard", "opportunities", "leads", "companies", 
     "contacts", "tasks", "calls", "emails", "meetings", 
-    "dashboards_analysis", "reports", "team", "settings", "system_settings"
+    "dashboards_analysis", "quotes", "team", "settings", "system_settings"
   ];
   return validTabs.includes(tabPart as SidebarTab) ? (tabPart as SidebarTab) : "dashboard";
 };
@@ -192,7 +192,7 @@ export default function App() {
         "emails",
         "meetings",
         "dashboards_analysis",
-        "reports",
+        "quotes",
         "team",
         "settings",
         "system_settings"
@@ -438,7 +438,7 @@ export default function App() {
   // Quick Action to open Quote page with Lead selected
   const handleTriggerQuote = (leadId: string) => {
     setSelectedLeadId(leadId);
-    setActiveTab("reports");
+    setActiveTab("quotes");
   };
 
   // Get leads according to Role-Based Access Matrix (page 5)
@@ -515,7 +515,7 @@ export default function App() {
       case "calls": return t("header.title.calls");
       case "emails": return `${t("header.title.emails")} (${emailProvider === "resend" ? "Mode Resend" : "Mode SMTP Individuel"})`;
       case "meetings": return t("header.title.meetings");
-      case "reports": return t("header.title.reports");
+      case "quotes": return t("header.title.quotes");
       case "team": return t("header.title.team");
       case "settings": return t("nav.accountSettings");
       case "system_settings": return t("nav.systemSettings");
@@ -691,7 +691,7 @@ export default function App() {
             />
           )}
 
-          {activeTab === "reports" && (
+          {activeTab === "quotes" && (
             <QuoteGenerator
               quotes={quotes}
               leads={visibleLeads.filter(l => l.statut !== LeadStatus.WON && l.statut !== LeadStatus.LOST)}

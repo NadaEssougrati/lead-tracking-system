@@ -15,7 +15,8 @@ import {
   Target,
   LogOut,
   Sun,
-  Moon
+  Moon,
+  Receipt
 } from "lucide-react";
 import { Role, User as UserType } from "../types";
 import { usePreferences } from "../AppPreferences";
@@ -32,7 +33,7 @@ export type SidebarTab =
   | "emails"
   | "meetings"
   | "dashboards_analysis"
-  | "reports"
+  | "quotes"
   | "team"
   | "settings"
   | "system_settings";
@@ -69,7 +70,8 @@ export default function Sidebar({
       items: [
         { id: "leads" as SidebarTab, labelKey: "nav.leads", icon: Users },
         { id: "opportunities" as SidebarTab, labelKey: "nav.opportunities", icon: KanbanSquare },
-        { id: "companies" as SidebarTab, labelKey: "nav.companies", icon: Building2 }
+        { id: "companies" as SidebarTab, labelKey: "nav.companies", icon: Building2 },
+        { id: "quotes" as SidebarTab, labelKey: "nav.quotes", icon: Receipt }
       ]
     },
     {
@@ -84,7 +86,6 @@ export default function Sidebar({
     {
       titleKey: "nav.section.analytics",
       items: [
-        { id: "reports" as SidebarTab, labelKey: "nav.reports", icon: FileText },
         { id: "dashboards_analysis" as SidebarTab, labelKey: "nav.analytics", icon: BarChart3 }
       ]
     },
@@ -110,7 +111,7 @@ export default function Sidebar({
         if (item.id === "team") {
           return activeUser.role === Role.ADMIN || activeUser.role === Role.MANAGER;
         }
-        if (item.id === "reports") {
+        if (item.id === "quotes") {
           return activeUser.role !== Role.MARKETING;
         }
         if (item.id === "dashboards_analysis") {

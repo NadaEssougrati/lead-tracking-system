@@ -322,8 +322,11 @@ export default function PipelineKanban({
                             <h5 className="font-bold text-xs text-slate-850 group-hover:text-blue-600 transition-colors dark:text-slate-200 dark:group-hover:text-blue-400">
                               {lead.societe}
                             </h5>
-                            <p className="text-[10px] text-slate-500 font-medium mt-0.5 dark:text-slate-400">
-                              {lead.prenom} {lead.nom}
+                            <p className="text-[10px] text-slate-550 font-semibold mt-0.5 dark:text-slate-400">
+                              Projet : {lead.nomProjet || `Opportunité - ${lead.prenom} ${lead.nom}`}
+                            </p>
+                            <p className="text-[9px] text-slate-400 dark:text-slate-500 font-medium mt-0.5">
+                              Contact : {lead.prenom} {lead.nom}
                             </p>
                           </div>
                           

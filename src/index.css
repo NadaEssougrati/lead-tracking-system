@@ -246,52 +246,7 @@ h1, h2, h3, h4, .font-display {
    PRINT — Quote / Invoice ("Imprimer en PDF")
    Only the invoice simulation block is printed, nothing else.
    ============================================================ */
-@media print {
-  body {
-    background: #ffffff !important;
-  }
 
-  body * {
-    visibility: hidden;
-  }
-
-  #invoice-simulation,
-  #invoice-simulation * {
-    visibility: visible;
-  }
-
-  #invoice-simulation {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-    margin: 0;
-    padding: 24px;
-    border: none !important;
-    box-shadow: none !important;
-    border-radius: 0 !important;
-    min-height: 0 !important;
-    background: #ffffff !important;
-    color: #1e293b !important;
-  }
-
-  /* Hide everything outside the invoice */
-  #root > *:not(#invoice-simulation) {
-    display: none !important;
-  }
-
-  /* Hide the on-screen watermark banner when printing */
-  #invoice-simulation .print-hide {
-    display: none !important;
-  }
-
-  /* Force print-friendly colors for the invoice */
-  #invoice-simulation * {
-    color: #1e293b !important;
-    background: transparent !important;
-    box-shadow: none !important;
-  }
-}
 
 @keyframes slideInRight {
   from {
