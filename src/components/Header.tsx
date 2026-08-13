@@ -24,8 +24,7 @@ interface HeaderProps {
   notifications: SystemNotification[];
   onMarkNotificationAsRead: (id: string) => void;
   onClearNotifications: () => void;
-  searchTerm: string;
-  onSearchChange: (val: string) => void;
+  onMarkAllNotificationsAsRead: () => void;
   currentPageTitle: string;
 }
 
@@ -34,8 +33,7 @@ export default function Header({
   notifications,
   onMarkNotificationAsRead,
   onClearNotifications,
-  searchTerm,
-  onSearchChange,
+  onMarkAllNotificationsAsRead,
   currentPageTitle,
 }: HeaderProps) {
   const [showNotifDropdown, setShowNotifDropdown] = useState(false);
@@ -66,20 +64,6 @@ export default function Header({
         <h1 className="text-xl font-semibold tracking-tight text-slate-900 flex items-center gap-2 dark:text-white">
           {currentPageTitle}
         </h1>
-        {searchTerm !== undefined && (
-          <div className="relative max-w-xs hidden md:block">
-            <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
-              <Search className="h-4 w-4" />
-            </span>
-            <input
-              type="text"
-              placeholder={t("header.search.placeholder")}
-              value={searchTerm}
-              onChange={(e) => onSearchChange(e.target.value)}
-              className="w-64 bg-slate-55 text-slate-900 placeholder-slate-400 text-sm rounded-lg pl-9 pr-4 py-1.5 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-            />
-          </div>
-        )}
       </div>
 
       <div className="flex items-center gap-6">
@@ -113,12 +97,23 @@ export default function Header({
               <div className="p-3 border-b border-slate-100 flex items-center justify-between bg-slate-50 text-slate-800 dark:bg-slate-800 dark:border-slate-700 dark:text-white">
                 <span className="font-semibold text-sm">{t("header.notifications")} ({unreadCount})</span>
                 {notifications.length > 0 && (
-                  <button
-                    onClick={onClearNotifications}
-                    className="text-xs text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white"
-                  >
-                    {t("header.notifications.clearl")}
-                  </button>
+                  <div className="flex items-center gap-2 text-xs">
+                    {unreadCount > 0 && (
+                      <button
+                        onClick={onMarkAllNotificationsAsRead}
+                        className="text-blue-600 hover:text-blue-800 font-bold dark:text-blue-450 dark:hover:text-blue-300 cursor-pointer"
+                      >
+                        Tout lire
+                      </button>
+                    )}
+                    {unreadCount > 0 && <span className="text-slate-300 dark:text-slate-700">|</span>}
+                    <button
+                      onClick={onClearNotifications}
+                      className="text-slate-500 hover:text-slate-700 font-bold dark:text-slate-400 dark:hover:text-slate-350 cursor-pointer"
+                    >
+                      Effacer
+                    </button>
+                  </div>
                 )}
               </div>
               <div className="max-h-64 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800">

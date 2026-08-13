@@ -18,9 +18,12 @@ import {
   PlayCircle,
   Trash2,
   Pencil,
-  X
+  X,
+  Phone,
+  Mail,
+  Calendar
 } from "lucide-react";
-import { Task, Lead, TaskStatus, User as UserType, LeadStatus } from "../types";
+import { Task, Lead, TaskStatus, User as UserType, LeadStatus, TaskType } from "../types";
 import { usePreferences } from "../AppPreferences";
 
 interface GlobalTasksProps {
@@ -54,6 +57,7 @@ export default function GlobalTasks({
   const [newDate, setNewDate] = useState("");
   const [newAssigned, setNewAssigned] = useState("");
   const [newCritique, setNewCritique] = useState(false);
+  const [newType, setNewType] = useState<TaskType>(TaskType.OTHER);
   const [taskFeedback, setTaskFeedback] = useState<string | null>(null);
   const [taskFeedbackType, setTaskFeedbackType] = useState<"success" | "error">("success");
   const [editingTask, setEditingTask] = useState<Task | null>(null);
@@ -63,6 +67,7 @@ export default function GlobalTasks({
   const [editAssigned, setEditAssigned] = useState("");
   const [editCritique, setEditCritique] = useState(false);
   const [editStatus, setEditStatus] = useState<TaskStatus>(TaskStatus.TODO);
+  const [editType, setEditType] = useState<TaskType>(TaskType.OTHER);
 
   const handleCreateTask = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -78,6 +83,7 @@ export default function GlobalTasks({
         assigneA: newAssigned ? (users.find(u => u.id === newAssigned)?.nom || "") : "",
         utilisateurId: newAssigned || undefined,
         critique: newCritique,
+        type: newType,
       });
 
       setTaskFeedback(t("tasks.created"));
@@ -88,6 +94,7 @@ export default function GlobalTasks({
       setNewDate("");
       setNewAssigned("");
       setNewCritique(false);
+      setNewType(TaskType.OTHER);
     } catch (err) {
       setTaskFeedback(err instanceof Error ? err.message : t("tasks.createError"));
       setTaskFeedbackType("error");
@@ -103,6 +110,7 @@ export default function GlobalTasks({
     setEditAssigned(task.utilisateurId || "");
     setEditCritique(task.critique);
     setEditStatus(task.statut);
+    setEditType(task.type || TaskType.OTHER);
   };
 
   const handleEditTaskSubmit = async (e: React.FormEvent) => {
@@ -118,6 +126,7 @@ export default function GlobalTasks({
         assigneA: editAssigned ? (users.find(u => u.id === editAssigned)?.nom || "") : editingTask.assigneA,
         critique: editCritique,
         statut: editStatus,
+        type: editType,
       });
 
       setTaskFeedback(t("tasks.updated"));
@@ -143,6 +152,36 @@ export default function GlobalTasks({
   const getLeadName = (leadId: string) => {
     const lead = leads.find(l => l.id === leadId);
     return lead ? lead.societe : t("tasks.unknownClient");
+  };
+
+  const getTaskTypeBadge = (type?: TaskType) => {
+    const tType = type || TaskType.OTHER;
+    switch (tType) {
+      case TaskType.CALL:
+        return (
+          <span className="bg-amber-50 text-amber-700 border border-amber-250/70 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider flex items-center gap-1 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-900">
+            <Phone className="h-3 w-3" /> {t("lead.type.call") || "Appel"}
+          </span>
+        );
+      case TaskType.EMAIL:
+        return (
+          <span className="bg-blue-50 text-blue-700 border border-blue-250/70 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider flex items-center gap-1 dark:bg-blue-950/20 dark:text-blue-400 dark:border-blue-900">
+            <Mail className="h-3 w-3" /> {t("lead.type.email") || "Email"}
+          </span>
+        );
+      case TaskType.MEETING:
+        return (
+          <span className="bg-purple-50 text-purple-700 border border-purple-250/70 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider flex items-center gap-1 dark:bg-purple-950/20 dark:text-purple-400 dark:border-purple-900">
+            <Calendar className="h-3 w-3" /> {t("lead.type.meeting") || "Rendez-vous"}
+          </span>
+        );
+      default:
+        return (
+          <span className="bg-slate-100 text-slate-600 border border-slate-200 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider flex items-center gap-1 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700">
+            {t("lead.type.other") || "Autre"}
+          </span>
+        );
+    }
   };
 
   const visibleTasks = tasks.filter((t) => leads.some((l) => l.id === t.leadId));
@@ -290,7 +329,19 @@ const filterValues = () => {
                   </select>
                 </div>
               </div>
-
+              <div>
+                <label className="block text-[10px] text-slate-500 font-bold uppercase mb-1.5">Type de tâche</label>
+                <select
+                  value={newType}
+                  onChange={(e) => setNewType(e.target.value as TaskType)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-slate-800 cursor-pointer text-xs focus:bg-white focus:outline-none"
+                >
+                  <option value={TaskType.CALL}>Appeler</option>
+                  <option value={TaskType.EMAIL}>Envoyer un email</option>
+                  <option value={TaskType.MEETING}>Rendez-vous</option>
+                  <option value={TaskType.OTHER}>Autre / Relance</option>
+                </select>
+              </div>
               <div>
                 <label className="block text-[10px] text-slate-500 font-bold uppercase mb-1.5">{t("tasks.notes")}</label>
                 <textarea
@@ -426,6 +477,7 @@ const filterValues = () => {
                           <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${isDone ? "bg-emerald-50 text-emerald-600 border border-emerald-200" : isInProgress ? "bg-amber-50 text-amber-600 border border-amber-200" : "bg-slate-100 text-slate-600 border border-slate-200"}`}>
                             {task.statut}
                           </span>
+                          {getTaskTypeBadge(task.type)}
                         </div>
                       </div>
 
@@ -527,17 +579,8 @@ const filterValues = () => {
                   </select>
                 </div>
               </div>
-              <div className="flex items-center gap-3 flex-wrap">
-                <label className="flex items-center gap-2 text-[11px] text-slate-600">
-                  <input
-                    type="checkbox"
-                    checked={editCritique}
-                    onChange={(e) => setEditCritique(e.target.checked)}
-                    className="h-4 w-4 rounded border-slate-300"
-                  />
-                  {t("tasks.markPriority")}
-                </label>
-                <div className="w-full md:w-auto">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+                <div>
                   <label className="block text-[10px] text-slate-500 font-bold uppercase mb-1.5">{t("common.status")}</label>
                   <select
                     value={editStatus}
@@ -548,6 +591,30 @@ const filterValues = () => {
                     <option value={TaskStatus.IN_PROGRESS}>{t("tasks.inProgress")}</option>
                     <option value={TaskStatus.DONE}>{t("tasks.done")}</option>
                   </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] text-slate-500 font-bold uppercase mb-1.5">Type de tâche</label>
+                  <select
+                    value={editType}
+                    onChange={(e) => setEditType(e.target.value as TaskType)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 focus:outline-none cursor-pointer"
+                  >
+                    <option value={TaskType.CALL}>Appeler</option>
+                    <option value={TaskType.EMAIL}>Envoyer un email</option>
+                    <option value={TaskType.MEETING}>Rendez-vous</option>
+                    <option value={TaskType.OTHER}>Autre / Relance</option>
+                  </select>
+                </div>
+                <div className="pb-2.5">
+                  <label className="flex items-center gap-2 text-[11px] text-slate-605">
+                    <input
+                      type="checkbox"
+                      checked={editCritique}
+                      onChange={(e) => setEditCritique(e.target.checked)}
+                      className="h-4 w-4 rounded border-slate-300"
+                    />
+                    {t("tasks.markPriority")}
+                  </label>
                 </div>
               </div>
               <div className="flex justify-end gap-3">

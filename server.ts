@@ -59,7 +59,7 @@ app.post("/api/gemini/analyze-lead", async (req, res) => {
     actionRecommandee: "Planifier une démonstration technique détaillée et confirmer l'implication des décideurs.",
     meilleurMoment: "Mardi matin entre 9h30 et 11h00",
     opportunites: [
-      `Budget estimé important (${lead.valeurEstimee.toLocaleString('fr-FR')} €) avec un besoin clairement identifié.`,
+      `Budget estimé important (${lead.valeurEstimee.toLocaleString('fr-FR')} MAD) avec un besoin clairement identifié.`,
       `Source de type '${lead.source}' qui offre généralement un taux de conversion supérieur de 12%.`
     ],
     risques: [

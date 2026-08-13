@@ -246,10 +246,10 @@ export default function DashboardStats({ leads, users, activities = [], onSelect
               <label className="font-bold text-slate-700 flex items-center gap-1.5">
                 <Coins className="h-3.5 w-3.5 text-slate-400" /> {t("dashboard.filters.minBudget")}
               </label>
-              <span className="text-blue-600 font-extrabold text-[11px]">{minValFilter.toLocaleString('fr-FR')} €</span>
+              <span className="text-blue-600 font-extrabold text-[11px]">{minValFilter.toLocaleString('fr-FR')} MAD</span>
             </div>
             <div className="flex items-center gap-2 pt-1">
-              <span className="text-[10px] text-slate-400">0 €</span>
+              <span className="text-[10px] text-slate-400">0 MAD</span>
               <input
                 type="range"
                 min="0"
@@ -259,7 +259,7 @@ export default function DashboardStats({ leads, users, activities = [], onSelect
                 onChange={(e) => setMinValFilter(Number(e.target.value))}
                 className="flex-1 accent-blue-600 cursor-pointer h-1.5 bg-slate-100 rounded-lg"
               />
-              <span className="text-[10px] text-slate-400">150k €</span>
+              <span className="text-[10px] text-slate-400">150k MAD</span>
             </div>
           </div>
         </div>
@@ -272,7 +272,7 @@ export default function DashboardStats({ leads, users, activities = [], onSelect
           <div className="flex justify-between items-start">
             <div>
               <p className="text-slate-500 text-[10px] font-bold uppercase tracking-wide">{t("dashboard.kpi.activePipeline")}</p>
-              <h3 className="text-2xl font-bold text-slate-900 mt-1">{(activeValue).toLocaleString('fr-FR')} €</h3>
+              <h3 className="text-2xl font-bold text-slate-900 mt-1">{(activeValue).toLocaleString('fr-FR')} MAD</h3>
             </div>
             <span className="p-2 bg-blue-50 rounded-lg text-blue-600">
               <TrendingUp className="h-5 w-5" />
@@ -325,7 +325,7 @@ export default function DashboardStats({ leads, users, activities = [], onSelect
           <div className="flex justify-between items-start">
             <div>
               <p className="text-slate-500 text-[10px] font-bold uppercase tracking-wide">{t("dashboard.kpi.wonLeads")}</p>
-              <h3 className="text-2xl font-bold text-emerald-600 mt-1">{(wonValue).toLocaleString('fr-FR')} €</h3>
+              <h3 className="text-2xl font-bold text-emerald-600 mt-1">{(wonValue).toLocaleString('fr-FR')} MAD</h3>
             </div>
             <span className="p-2 bg-emerald-50 rounded-lg text-emerald-600">
               <BadgeCheck className="h-5 w-5" />
@@ -372,7 +372,7 @@ export default function DashboardStats({ leads, users, activities = [], onSelect
                 <YAxis stroke="#64748b" fontSize={11} tickLine={false} />
                 <Tooltip 
                   contentStyle={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px', color: '#0f172a' }}
-                  formatter={(val: any) => [`${Number(val).toLocaleString('fr-FR')} €`, t("dashboard.chart1.value")]}
+                  formatter={(val: any) => [`${Number(val).toLocaleString('fr-FR')} MAD`, t("dashboard.chart1.value")]}
                 />
                 <Bar dataKey="valeur" fill="#3b82f6" radius={[4, 4, 0, 0]}>
                   {stageData.map((entry, index) => (
@@ -410,7 +410,7 @@ export default function DashboardStats({ leads, users, activities = [], onSelect
                   <Tooltip 
                     contentStyle={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px', color: '#0f172a' }}
                     formatter={(val: any, _name: any, props: any) => [
-                      `${val} (${props.payload.valeurTotale.toLocaleString('fr-FR')} €)`,
+                      `${val} (${props.payload.valeurTotale.toLocaleString('fr-FR')} MAD)`,
                       t("dashboard.chart2.volume")
                     ]}
                   />
@@ -428,7 +428,7 @@ export default function DashboardStats({ leads, users, activities = [], onSelect
                   </div>
                   <div className="text-right">
                     <span className="font-semibold text-slate-800">{d.value}</span>
-                    <span className="text-slate-400 text-[10px] block">{d.valeurTotale.toLocaleString('fr-FR')} €</span>
+                    <span className="text-slate-400 text-[10px] block">{d.valeurTotale.toLocaleString('fr-FR')} MAD</span>
                   </div>
                 </div>
               ))}
@@ -462,7 +462,7 @@ export default function DashboardStats({ leads, users, activities = [], onSelect
             <div className="space-y-2 bg-slate-50 p-4 rounded-xl border border-slate-100">
               <div className="flex justify-between items-center text-xs text-slate-700 font-bold">
                 <span>{t("dashboard.goal.target")}</span>
-                <span className="text-base text-blue-600 font-extrabold">{salesGoal.toLocaleString('fr-FR')} €</span>
+                <span className="text-base text-blue-600 font-extrabold">{salesGoal.toLocaleString('fr-FR')} MAD</span>
               </div>
               <input
                 type="range"
@@ -474,16 +474,16 @@ export default function DashboardStats({ leads, users, activities = [], onSelect
                 className="w-full accent-blue-600 cursor-pointer h-1.5 bg-slate-200 rounded-lg"
               />
               <div className="flex justify-between text-[9px] text-slate-400">
-                <span>20k €</span>
-                <span>250k €</span>
-                <span>500k €</span>
+                <span>20k MAD</span>
+                <span>250k MAD</span>
+                <span>500k MAD</span>
               </div>
             </div>
 
 {/* Progress Metrics bar */}
             <div className="mt-5 space-y-2">
               <div className="flex justify-between text-xs">
-                <span className="text-slate-500">{t("dashboard.goal.progress")} <strong className="text-slate-800">{wonValue.toLocaleString('fr-FR')} €</strong> {t("dashboard.goal.secured")}</span>
+                <span className="text-slate-500">{t("dashboard.goal.progress")} <strong className="text-slate-800">{wonValue.toLocaleString('fr-FR')} MAD</strong> {t("dashboard.goal.secured")}</span>
                 <span className="font-extrabold text-blue-600">{progressPercent} %</span>
               </div>
               <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden flex">
@@ -511,8 +511,8 @@ export default function DashboardStats({ leads, users, activities = [], onSelect
                 <div>
                   <span className="font-bold block">{t("dashboard.goal.forecast.title")}</span>
                   <p className="text-[11px] text-blue-700 leading-relaxed">
-                    {t("dashboard.goal.leftToSign")} <strong className="font-extrabold">{remainingToGoal.toLocaleString('fr-FR')} €</strong> {t("dashboard.goal.toSign")}
-                    {t("dashboard.goal.convertText")} <strong className="font-extrabold text-blue-900">{neededDeals}</strong> {t("dashboard.goal.leadsOfPipeline")} {avgOpportunityValue.toLocaleString('fr-FR')} €).
+                    {t("dashboard.goal.leftToSign")} <strong className="font-extrabold">{remainingToGoal.toLocaleString('fr-FR')} MAD</strong> {t("dashboard.goal.toSign")}
+                    {t("dashboard.goal.convertText")} <strong className="font-extrabold text-blue-900">{neededDeals}</strong> {t("dashboard.goal.leadsOfPipeline")} {avgOpportunityValue.toLocaleString('fr-FR')} MAD).
                   </p>
                 </div>
               </div>
@@ -707,13 +707,13 @@ export default function DashboardStats({ leads, users, activities = [], onSelect
                       </span>
                     </td>
                     <td className="py-3 text-right font-bold text-slate-800">
-                      {comm.wonAmount.toLocaleString('fr-FR')} €
+                      {comm.wonAmount.toLocaleString('fr-FR')} MAD
                     </td>
                     <td className="py-3 text-center text-slate-600 font-semibold">
                       {comm.activeCount}
                     </td>
                     <td className="py-3 text-right text-slate-500 font-medium">
-                      {comm.activeAmount.toLocaleString('fr-FR')} €
+                      {comm.activeAmount.toLocaleString('fr-FR')} MAD
                     </td>
                   </tr>
                 ))}
@@ -744,7 +744,7 @@ export default function DashboardStats({ leads, users, activities = [], onSelect
                     <span className="text-slate-500 flex items-center gap-1">
                       <MapPin className="h-3 w-3 text-slate-400" /> {lead.ville}
                     </span>
-                    <span className="text-blue-600 font-bold">{lead.valeurEstimee.toLocaleString('fr-FR')} €</span>
+                    <span className="text-blue-600 font-bold">{lead.valeurEstimee.toLocaleString('fr-FR')} MAD</span>
                   </div>
                 </div>
                 

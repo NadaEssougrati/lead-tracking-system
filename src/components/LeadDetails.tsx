@@ -29,9 +29,16 @@ import {
   Search,
   Building,
   LogOut,
-  Trash2
-  ,
-  Pencil
+  Trash2,
+  Pencil,
+  Bold,
+  Italic,
+  List,
+  Link2,
+  Paperclip,
+  Smile,
+  Send,
+  Loader2
 } from "lucide-react";
 import { api, uploadFile, login, setAccessToken, API_URL, API_ROOT } from "../api";
 import { 
@@ -42,12 +49,45 @@ import {
   Role, 
   LeadStatus, 
   LeadPriority, 
+  LeadSource, 
   ActivityType, 
   Document,
-  TaskStatus
+  TaskStatus,
+  TaskType
 } from "../types";
 import LeadForm from "./LeadForm";
 import { usePreferences } from "../AppPreferences";
+
+const EMAIL_TEMPLATES = [
+  {
+    id: "welcome",
+    name: "Prise de contact / Bienvenue",
+    desc: "Premier contact après inscription ou intérêt.",
+    defaultSubject: "Bienvenue chez LeadFlow - Prise de contact",
+    defaultBody: "Bonjour [Nom],\n\nC'est un plaisir d'entrer en contact avec vous. J'ai bien reçu votre demande d'informations concernant nos services.\n\nQuelle serait votre meilleure disponibilité cette semaine pour un rapide échange téléphonique de 10 minutes afin de qualifier au mieux votre projet ?\n\nCordialement,\n[MonNom]"
+  },
+  {
+    id: "proposal_followup",
+    name: "Suivi de proposition commerciale",
+    desc: "Suivi après envoi du devis ou de l'offre.",
+    defaultSubject: "Suivi de notre proposition commerciale - LeadFlow",
+    defaultBody: "Bonjour [Nom],\n\nJe me permets de vous recontacter afin de savoir si vous aviez pu prendre connaissance de la proposition commerciale envoyée récemment.\n\nAvez-vous des questions particulières ou des ajustements à y apporter ?\n\nDans l'attente de votre retour,\n[MonNom]"
+  },
+  {
+    id: "meeting_confirm",
+    name: "Confirmation de rendez-vous",
+    desc: "Validation de l'heure et du lien de visioconférence.",
+    defaultSubject: "Confirmation de notre rendez-vous",
+    defaultBody: "Bonjour [Nom],\n\nJe vous confirme notre rendez-vous calé pour le [Date] à [Heure].\n\nVoici le lien d'accès à la visioconférence : [Lien]. Si vous rencontrez le moindre contretemps, n'hésitez pas à m'en informer.\n\nBonne journée,\n[MonNom]"
+  },
+  {
+    id: "negotiation",
+    name: "Offre / Ajustement tarifaire",
+    desc: "Proposition finale ajustée aux contraintes budgétaires.",
+    defaultSubject: "Ajustement budgétaire - LeadFlow",
+    defaultBody: "Bonjour [Nom],\n\nFaisant suite à nos récents échanges, j'ai le plaisir de vous soumettre une offre finale réévaluée afin de mieux correspondre à vos contraintes budgétaires.\n\nVous trouverez le détail des remises de fin d'année sur votre espace client.\n\nCordialement,\n[MonNom]"
+  }
+];
 
 interface LeadDetailsProps {
   activeTab?: string;
@@ -138,6 +178,12 @@ export default function LeadDetails({
   // Search & Filter state for the lead selector
   const [leadSearchTerm, setLeadSearchTerm] = useState("");
   const [leadStatusFilter, setLeadStatusFilter] = useState("all");
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [leadPriorityFilter, setLeadPriorityFilter] = useState("all");
+  const [leadSourceFilter, setLeadSourceFilter] = useState("all");
+  const [leadCommercialFilter, setLeadCommercialFilter] = useState("all");
+  const [leadMinBudget, setLeadMinBudget] = useState("");
+  const [leadMaxBudget, setLeadMaxBudget] = useState("");
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditLeadModal, setShowEditLeadModal] = useState(false);
   const [showEditTask, setShowEditTask] = useState<Task | null>(null);
@@ -155,9 +201,106 @@ export default function LeadDetails({
   const [taskTitle, setTaskTitle] = useState("");
   const [taskCritique, setTaskCritique] = useState(false);
   const [taskDueDate, setTaskDueDate] = useState("");
+  const [taskType, setTaskType] = useState<TaskType>(TaskType.OTHER);
+
+  // Email Composer states & helpers
+  const [emailSubject, setEmailSubject] = useState("");
+  const [emailBody, setEmailBody] = useState("");
+  const [emailAiTone, setEmailAiTone] = useState("professional");
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
+  const [isGeneratingEmail, setIsGeneratingEmail] = useState(false);
+
+  const applyEmailTemplate = (tplId: string) => {
+    const tpl = EMAIL_TEMPLATES.find(t => t.id === tplId);
+    if (tpl && lead) {
+      const parsedSubj = tpl.defaultSubject.replace("[Nom]", `${lead.prenom} ${lead.nom}`);
+      const parsedBody = tpl.defaultBody
+        .replace("[Nom]", `${lead.prenom} ${lead.nom}`)
+        .replace("[MonNom]", activeUser.nom);
+      setEmailSubject(parsedSubj);
+      setEmailBody(parsedBody);
+    }
+  };
+
+  const handleAIGenerateEmail = async () => {
+    if (!lead) return;
+    setIsGeneratingEmail(true);
+    try {
+      const response = await api<{ subject: string; body: string }>("/ai/generate-email", {
+        method: "POST",
+        body: JSON.stringify({
+          leadId: lead.id,
+          tone: emailAiTone
+        })
+      });
+      if (response.subject) setEmailSubject(response.subject);
+      if (response.body) setEmailBody(response.body);
+    } catch (e) {
+      console.error(e);
+      // Fallback
+      setEmailSubject("Prise de contact");
+      setEmailBody(`Bonjour ${lead.prenom} ${lead.nom},\n\nJe fais suite à notre intérêt mutuel pour qualifier votre projet.\n\nCordialement,\n${activeUser.nom}`);
+    } finally {
+      setIsGeneratingEmail(false);
+    }
+  };
+
+  const handleSendEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!lead) return;
+    if (!lead.email) {
+      alert("Ce destinataire n'a pas d'adresse email configurée.");
+      return;
+    }
+    if (!emailSubject || !emailBody) {
+      alert("Le sujet et le contenu sont obligatoires.");
+      return;
+    }
+
+    setIsSendingEmail(true);
+    try {
+      // 1. Log as activity in CRM
+      await api("/activities", {
+        method: "POST",
+        body: JSON.stringify({
+          type: "Email",
+          dateActivite: new Date().toISOString(),
+          description: `Sujet : ${emailSubject}\n\n${emailBody}`,
+          leadId: lead.id
+        })
+      });
+
+      // 2. Open local mail client via mailto
+      const mailtoUrl = `mailto:${encodeURIComponent(lead.email)}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
+      window.location.href = mailtoUrl;
+
+      // 3. Clear and close
+      setEmailSubject("");
+      setEmailBody("");
+      setShowLogModal(null);
+
+      // Refresh activity timeline in profile page
+      onAddActivity({
+        leadId: lead.id,
+        type: ActivityType.EMAIL,
+        date: new Date().toISOString(),
+        auteur: activeUser.nom,
+        description: `Email envoyé : Sujet : ${emailSubject}\n\n${emailBody}`
+      });
+
+      // Re-run AI analysis
+      setTimeout(() => runAiAnalysis(true), 500);
+    } catch (err) {
+      console.error(err);
+      alert("Erreur lors de l'enregistrement de l'activité.");
+    } finally {
+      setIsSendingEmail(false);
+    }
+  };
 
   // Lead edit form state
   const [editLeadSociete, setEditLeadSociete] = useState(lead?.societe || "");
+  const [editLeadNomProjet, setEditLeadNomProjet] = useState(lead?.nomProjet || "");
   const [editLeadPrenom, setEditLeadPrenom] = useState(lead?.prenom || "");
   const [editLeadNom, setEditLeadNom] = useState(lead?.nom || "");
   const [editLeadEmail, setEditLeadEmail] = useState(lead?.email || "");
@@ -175,6 +318,7 @@ export default function LeadDetails({
   const [editTaskDueDate, setEditTaskDueDate] = useState("");
   const [editTaskCritique, setEditTaskCritique] = useState(false);
   const [editTaskAssigneeId, setEditTaskAssigneeId] = useState<string>(activeUser.id);
+  const [editTaskType, setEditTaskType] = useState<TaskType>(TaskType.OTHER);
 
   // AI states
   const [aiAnalysis, setAiAnalysis] = useState<{
@@ -297,6 +441,36 @@ export default function LeadDetails({
     setTimeout(() => runAiAnalysis(true), 500);
   };
 
+  const getTaskTypeBadge = (type?: TaskType) => {
+    const tType = type || TaskType.OTHER;
+    switch (tType) {
+      case TaskType.CALL:
+        return (
+          <span className="bg-amber-50 text-amber-700 border border-amber-250/70 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider flex items-center gap-1 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-900">
+            <Phone className="h-3 w-3" /> Appel
+          </span>
+        );
+      case TaskType.EMAIL:
+        return (
+          <span className="bg-blue-50 text-blue-700 border border-blue-250/70 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider flex items-center gap-1 dark:bg-blue-950/20 dark:text-blue-400 dark:border-blue-900">
+            <Mail className="h-3 w-3" /> Email
+          </span>
+        );
+      case TaskType.MEETING:
+        return (
+          <span className="bg-purple-50 text-purple-700 border border-purple-250/70 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider flex items-center gap-1 dark:bg-purple-950/20 dark:text-purple-400 dark:border-purple-900">
+            <Calendar className="h-3 w-3" /> RDV
+          </span>
+        );
+      default:
+        return (
+          <span className="bg-slate-100 text-slate-600 border border-slate-200 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider flex items-center gap-1 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700">
+            Autre
+          </span>
+        );
+    }
+  };
+
   // Handle Task creation
   const handleCreateTask = (e: React.FormEvent) => {
     e.preventDefault();
@@ -310,12 +484,14 @@ export default function LeadDetails({
       dateEcheance: taskDueDate,
       assigneA: activeUser.nom,
       utilisateurId: activeUser.id,
-      critique: taskCritique
+      critique: taskCritique,
+      type: taskType
     });
 
     setTaskTitle("");
     setTaskCritique(false);
     setTaskDueDate("");
+    setTaskType(TaskType.OTHER);
     setShowLogModal(null);
   };
 
@@ -326,6 +502,7 @@ export default function LeadDetails({
     setEditTaskDueDate(task.dateEcheance);
     setEditTaskCritique(task.critique);
     setEditTaskAssigneeId(task.utilisateurId || activeUser.id);
+    setEditTaskType(task.type || TaskType.OTHER);
   };
 
   const handleSaveEditedTask = (e: React.FormEvent) => {
@@ -338,12 +515,14 @@ export default function LeadDetails({
       dateEcheance: editTaskDueDate,
       critique: editTaskCritique,
       utilisateurId: editTaskAssigneeId,
+      type: editTaskType
     });
     setShowEditTask(null);
   };
 
   const handleOpenEditLead = () => {
     setEditLeadSociete(lead.societe);
+    setEditLeadNomProjet(lead.nomProjet || "");
     setEditLeadPrenom(lead.prenom);
     setEditLeadNom(lead.nom);
     setEditLeadEmail(lead.email);
@@ -362,6 +541,7 @@ export default function LeadDetails({
     onUpdateLead({
       ...lead,
       societe: editLeadSociete,
+      nomProjet: editLeadNomProjet,
       prenom: editLeadPrenom,
       nom: editLeadNom,
       email: editLeadEmail,
@@ -509,12 +689,104 @@ export default function LeadDetails({
   };
 
   if (!lead) {
+    if (activeTab === "companies" && selectedCompanyName) {
+      const companyLeads = leads.filter(l => l.societe === selectedCompanyName);
+      const firstLead = companyLeads[0];
+      
+      return (
+        <div className="flex-1 bg-slate-50 dark:bg-slate-950 p-6 overflow-y-auto max-h-screen text-slate-850" id="company-detail-root">
+          <div className="max-w-7xl mx-auto w-full space-y-6">
+            {/* Back button & Header */}
+            <div className="bg-white border border-slate-200 p-6 rounded-xl shadow-sm dark:bg-slate-900 dark:border-slate-800 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+              <div>
+                <button
+                  onClick={() => setSelectedCompanyName(null)}
+                  className="flex items-center gap-1 text-[11px] font-bold text-blue-600 hover:text-blue-500 mb-2 cursor-pointer"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  Retour aux Entreprises
+                </button>
+                <h2 className="text-xl font-bold font-display text-slate-900 dark:text-white flex items-center gap-2">
+                  <Building className="h-5.5 w-5.5 text-blue-600" />
+                  {selectedCompanyName}
+                </h2>
+                <p className="text-slate-500 text-xs mt-1 dark:text-slate-400">
+                  {firstLead.adresse}, {firstLead.ville}, {firstLead.pays}
+                </p>
+              </div>
+              
+              <div className="bg-blue-50/50 border border-blue-150 rounded-lg p-3 dark:bg-slate-800 dark:border-slate-700">
+                <span className="text-[9px] uppercase font-bold text-slate-400 tracking-wider block">Portefeuille Total</span>
+                <span className="text-lg font-extrabold text-blue-600 dark:text-blue-400">
+                  {companyLeads.reduce((sum, l) => sum + l.valeurEstimee, 0).toLocaleString('fr-FR')} MAD
+                </span>
+              </div>
+            </div>
+
+            {/* List of Opportunities / Leads for this company */}
+            <div className="bg-white border border-slate-200 p-6 rounded-xl shadow-sm dark:bg-slate-900 dark:border-slate-800">
+              <h3 className="font-bold text-sm text-slate-900 dark:text-white mb-4 uppercase tracking-wider text-[11px]">
+                Dossiers d'opportunités ({companyLeads.length})
+              </h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {companyLeads.map(l => (
+                  <div 
+                    key={l.id}
+                    onClick={() => onSelectLead(l.id)}
+                    className="border border-slate-200 p-4 rounded-xl hover:border-blue-500/50 hover:bg-slate-50 dark:hover:bg-slate-800/40 cursor-pointer transition-all dark:border-slate-800 flex flex-col justify-between"
+                  >
+                    <div>
+                      <div className="flex items-center justify-between gap-3 mb-2.5">
+                        <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${
+                          l.statut === LeadStatus.WON 
+                            ? "bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/20 dark:text-emerald-450" 
+                            : "bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-950/20 dark:text-blue-400"
+                        }`}>
+                          {translateStatus(l.statut)}
+                        </span>
+                        
+                        <span className="text-[10px] text-slate-405">
+                          Priorité {translatePriority(l.priorite)}
+                        </span>
+                      </div>
+                      
+                      <div className="space-y-1">
+                        <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                          Contact : {l.prenom} {l.nom}
+                        </p>
+                        <p className="text-[10px] text-slate-400 dark:text-slate-500">
+                          {l.email} | {l.telephone}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="mt-4 pt-3 border-t border-slate-105 dark:border-slate-800 flex items-center justify-between">
+                      <div>
+                        <span className="text-[9px] uppercase text-slate-400 font-bold tracking-wider block">Budget Estimé</span>
+                        <span className="font-extrabold text-slate-800 dark:text-slate-205 text-sm">
+                          {l.valeurEstimee.toLocaleString('fr-FR')} MAD
+                        </span>
+                      </div>
+                      <span className="text-[11px] text-blue-600 font-bold hover:text-blue-500 flex items-center gap-1 dark:text-blue-400">
+                        Ouvrir le dossier <ChevronRight className="h-3.5 w-3.5" />
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     if (activeTab === "companies") {
       const uniqueCompanies = Array.from(new Set(leads.map(l => l.societe))).map(societeName => {
         const companyLeads = leads.filter(l => l.societe === societeName);
         const mainLead = companyLeads[0];
         const totalBudget = companyLeads.reduce((sum, cl) => sum + cl.valeurEstimee, 0);
-const avgScore = Math.round(companyLeads.reduce((sum, cl) => sum + cl.score, 0) / companyLeads.length);
+        const avgScore = Math.round(companyLeads.reduce((sum, cl) => sum + cl.score, 0) / companyLeads.length);
         return {
           id: mainLead.id,
           name: societeName,
@@ -537,9 +809,28 @@ const avgScore = Math.round(companyLeads.reduce((sum, cl) => sum + cl.score, 0) 
         const matchesSearch = 
           c.name.toLowerCase().includes(leadSearchTerm.toLowerCase()) ||
           c.city.toLowerCase().includes(leadSearchTerm.toLowerCase()) ||
-          c.country.toLowerCase().includes(leadSearchTerm.toLowerCase());
-        const matchesStatus = leadStatusFilter === "all" || c.status === leadStatusFilter;
-        return matchesSearch && matchesStatus;
+          c.country.toLowerCase().includes(leadSearchTerm.toLowerCase()) ||
+          c.leads.some(cl => 
+            `${cl.prenom} ${cl.nom}`.toLowerCase().includes(leadSearchTerm.toLowerCase()) ||
+            cl.email.toLowerCase().includes(leadSearchTerm.toLowerCase()) ||
+            cl.telephone.toLowerCase().includes(leadSearchTerm.toLowerCase())
+          );
+        if (!matchesSearch) return false;
+
+        if (leadStatusFilter !== "all" && !c.leads.some(cl => cl.statut === leadStatusFilter)) return false;
+        if (leadPriorityFilter !== "all" && !c.leads.some(cl => cl.priorite === leadPriorityFilter)) return false;
+        if (leadSourceFilter !== "all" && !c.leads.some(cl => cl.source === leadSourceFilter)) return false;
+        if (leadCommercialFilter !== "all") {
+          if (leadCommercialFilter === "unassigned") {
+            if (c.leads.some(cl => cl.commercialId)) return false;
+          } else {
+            if (!c.leads.some(cl => cl.commercialId === leadCommercialFilter)) return false;
+          }
+        }
+        if (leadMinBudget && c.totalBudget < Number(leadMinBudget)) return false;
+        if (leadMaxBudget && c.totalBudget > Number(leadMaxBudget)) return false;
+
+        return true;
       });
 
       const totalPortfolioValue = uniqueCompanies.reduce((sum, c) => sum + c.totalBudget, 0);
@@ -549,57 +840,127 @@ const avgScore = Math.round(companyLeads.reduce((sum, cl) => sum + cl.score, 0) 
         <div className="flex-1 bg-slate-50 dark:bg-slate-950 p-6 overflow-y-auto max-h-screen text-slate-850" id="companies-directory-root">
           <div className="max-w-7xl mx-auto w-full space-y-6">
             
-            {/* Header section */}
-            <div className="bg-white border border-slate-200 p-6 rounded-xl shadow-sm">
-              <h2 className="text-xl font-bold font-display text-slate-900 mb-2 flex items-center gap-2">
-                <Building className="h-5.5 w-5.5 text-blue-600" />
+            {/* Header section with inline KPIs */}
+            <div className="bg-white border border-slate-200 p-5 rounded-xl shadow-sm dark:bg-slate-900 dark:border-slate-800 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 animate-fade-in">
+              <h2 className="text-xl font-bold font-display text-slate-900 dark:text-white flex items-center gap-2">
+                <Building className="h-5.5 w-5.5 text-blue-600 animate-pulse" />
                 {t("lead.title.companies")}
               </h2>
-              <p className="text-slate-500 text-xs leading-relaxed">
-                {t("lead.subtitle.companies")}
-              </p>
-            </div>
-
-            {/* Micro KPI Banner for Companies */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="bg-white border border-slate-200 p-4 rounded-xl shadow-sm flex flex-col justify-between">
-                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">{t("lead.totalCompanies")}</span>
-                <span className="text-xl font-extrabold text-slate-900 mt-1">{uniqueCompanies.length}</span>
-              </div>
-              <div className="bg-white border border-slate-200 p-4 rounded-xl shadow-sm flex flex-col justify-between">
-                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">{t("lead.cumulatedOpps")}</span>
-                <span className="text-xl font-extrabold text-blue-600 mt-1">{totalPortfolioValue.toLocaleString('fr-FR')} €</span>
-              </div>
-              <div className="bg-white border border-slate-200 p-4 rounded-xl shadow-sm flex flex-col justify-between">
-                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">{t("lead.avgBudget")}</span>
-                <span className="text-xl font-extrabold text-emerald-600 mt-1">{avgPortfolioValue.toLocaleString('fr-FR')} €</span>
+              
+              <div className="flex flex-wrap items-center gap-3 md:gap-4 text-xs">
+                <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-100 dark:border-slate-800 shadow-sm">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 tracking-wider">{t("lead.totalCompanies")} :</span>
+                  <span className="font-extrabold text-slate-900 dark:text-white">{uniqueCompanies.length}</span>
+                </div>
+                
+                <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-100 dark:border-slate-800 shadow-sm">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 tracking-wider">{t("lead.cumulatedOpps")} :</span>
+                  <span className="font-extrabold text-blue-600 dark:text-blue-400">{totalPortfolioValue.toLocaleString('fr-FR')} MAD</span>
+                </div>
+                
+                <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-100 dark:border-slate-800 shadow-sm">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 tracking-wider">{t("lead.avgBudget")} :</span>
+                  <span className="font-extrabold text-emerald-600 dark:text-emerald-450">{avgPortfolioValue.toLocaleString('fr-FR')} MAD</span>
+                </div>
               </div>
             </div>
 
             {/* Search and Filters */}
-            <div className="bg-white border border-slate-200 p-4 rounded-xl flex flex-col sm:flex-row gap-3 items-center justify-between text-xs shadow-sm">
-              <div className="relative w-full sm:w-80">
-                <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-                <input
-                  type="text"
-                  placeholder={t("lead.searchCompanyPlaceholder")}
-                  value={leadSearchTerm}
-                  onChange={(e) => setLeadSearchTerm(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 pl-9 pr-4 text-slate-700 text-xs focus:outline-none focus:border-blue-500 focus:bg-white"
-                />
+            <div className="space-y-3">
+              {/* Search Input (Full Width of Card) */}
+              <div className="bg-white border border-slate-200 p-4 rounded-xl shadow-sm text-xs dark:bg-slate-900 dark:border-slate-800">
+                <div className="relative w-full">
+                  <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder={t("lead.searchCompanyPlaceholder")}
+                    value={leadSearchTerm}
+                    onChange={(e) => setLeadSearchTerm(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 pl-9 pr-4 text-slate-700 text-xs focus:outline-none focus:border-blue-500 focus:bg-white dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200 dark:placeholder-slate-500"
+                  />
+                </div>
               </div>
 
-              <div className="flex gap-2 w-full sm:w-auto">
-                <select
-                  value={leadStatusFilter}
-                  onChange={(e) => setLeadStatusFilter(e.target.value)}
-                  className="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-600 font-semibold cursor-pointer text-xs focus:ring-0 w-full sm:w-auto focus:bg-white"
-                >
-                  <option value="all">{t("lead.allCompanyStages")}</option>
-                  {Object.values(LeadStatus).map(st => (
-                    <option key={st} value={st}>{st}</option>
-                  ))}
-                </select>
+              {/* Filter Controls (6-Column Grid) */}
+              <div className="bg-white border border-slate-200 p-4 rounded-xl grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-3 text-xs shadow-sm dark:bg-slate-900 dark:border-slate-800">
+                <div>
+                  <label className="block text-slate-500 font-bold mb-1 uppercase text-[9px] dark:text-slate-400">Étape du prospect</label>
+                  <select
+                    value={leadStatusFilter}
+                    onChange={(e) => setLeadStatusFilter(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-650 cursor-pointer focus:bg-white focus:outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300"
+                  >
+                    <option value="all">{t("lead.allCompanyStages")}</option>
+                    {Object.values(LeadStatus).map(st => (
+                      <option key={st} value={st}>{st}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-slate-500 font-bold mb-1 uppercase text-[9px] dark:text-slate-400">Priorité</label>
+                  <select
+                    value={leadPriorityFilter}
+                    onChange={(e) => setLeadPriorityFilter(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-650 cursor-pointer focus:bg-white focus:outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300"
+                  >
+                    <option value="all">Toutes</option>
+                    <option value={LeadPriority.LOW}>Basse</option>
+                    <option value={LeadPriority.MEDIUM}>Moyenne</option>
+                    <option value={LeadPriority.HIGH}>Haute</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-slate-500 font-bold mb-1 uppercase text-[9px] dark:text-slate-400">Source d'acquisition</label>
+                  <select
+                    value={leadSourceFilter}
+                    onChange={(e) => setLeadSourceFilter(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-650 cursor-pointer focus:bg-white focus:outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-slate-305"
+                  >
+                    <option value="all">Toutes les sources</option>
+                    {Object.values(LeadSource).map(src => (
+                      <option key={src} value={src}>{src}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-slate-500 font-bold mb-1 uppercase text-[9px] dark:text-slate-400">Assigné à</label>
+                  <select
+                    value={leadCommercialFilter}
+                    onChange={(e) => setLeadCommercialFilter(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-650 cursor-pointer focus:bg-white focus:outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300"
+                  >
+                    <option value="all">Tout l'équipe</option>
+                    <option value="unassigned">Non attribué</option>
+                    {users.filter(u => u.role === Role.COMMERCIAL).map(u => (
+                      <option key={u.id} value={u.id}>{u.nom}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-slate-500 font-bold mb-1 uppercase text-[9px] dark:text-slate-400">Min Budget (MAD)</label>
+                  <input
+                    type="number"
+                    placeholder="Min"
+                    value={leadMinBudget}
+                    onChange={(e) => setLeadMinBudget(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-slate-700 focus:bg-white focus:outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-500 font-bold mb-1 uppercase text-[9px] dark:text-slate-400">Max Budget (MAD)</label>
+                  <input
+                    type="number"
+                    placeholder="Max"
+                    value={leadMaxBudget}
+                    onChange={(e) => setLeadMaxBudget(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-slate-700 focus:bg-white focus:outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200"
+                  />
+                </div>
               </div>
             </div>
 
@@ -608,60 +969,73 @@ const avgScore = Math.round(companyLeads.reduce((sum, cl) => sum + cl.score, 0) 
               {filteredCompanies.map(c => (
                 <div 
                   key={c.name}
-onClick={() => {
-                          if (c.leads && c.leads.length > 1) {
-                            setSelectedCompanyName(c.name);
-                          } else {
-                            onSelectLead(c.id);
-                          }
-                        }}
-                  className="bg-white border border-slate-200 p-5 rounded-xl hover:border-blue-500/50 cursor-pointer transition-all flex flex-col justify-between hover:bg-slate-50 shadow-sm"
+                  onClick={() => {
+                    setSelectedCompanyName(c.name);
+                  }}
+                  className="bg-white border border-slate-200 p-5 rounded-xl hover:border-blue-500/50 cursor-pointer transition-all flex flex-col justify-between hover:bg-slate-50 dark:bg-slate-900 dark:border-slate-800 dark:hover:border-slate-700 shadow-sm"
                 >
                   <div>
                     <div className="flex items-start justify-between gap-3 mb-2">
                       <div className="flex items-center gap-2">
-                        <div className="p-1.5 bg-blue-50 rounded-lg">
-                          <Building className="h-4.5 w-4.5 text-blue-600" />
+                        <div className="p-1.5 bg-blue-50 rounded-lg dark:bg-slate-800">
+                          <Building className="h-4.5 w-4.5 text-blue-600 dark:text-blue-400" />
                         </div>
                         <div>
-                          <h4 className="font-bold text-slate-900 text-sm">{c.name}</h4>
-                          <span className="text-[10px] text-slate-400">{c.leadsCount} {t("lead.associated")}</span>
+                          <h4 className="font-bold text-slate-900 dark:text-white text-sm">{c.name}</h4>
+                          <span className="text-[10px] text-slate-400">{c.leadsCount} opportunité(s)</span>
                         </div>
                       </div>
                       <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
                         c.status === LeadStatus.WON 
-                          ? "bg-emerald-50 text-emerald-700 border border-emerald-200" 
-                          : "bg-blue-50 text-blue-700 border border-blue-200"
+                          ? "bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/20 dark:text-emerald-450" 
+                          : "bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-950/20 dark:text-blue-450"
                       }`}>
                         {translateStatus(c.status)}
                       </span>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-500 mt-4 border-t border-slate-100 pt-3">
+                    <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-500 mt-4 border-t border-slate-100 dark:border-slate-800 pt-3">
                       <div>
                         <span className="text-slate-400 block">{t("lead.accountValue")}</span>
-                        <span className="font-bold text-slate-800">{c.totalBudget.toLocaleString('fr-FR')} €</span>
+                        <span className="font-bold text-slate-800 dark:text-slate-200">{c.totalBudget.toLocaleString('fr-FR')} MAD</span>
                       </div>
                       <div>
                         <span className="text-slate-400 block">{t("lead.city")}</span>
-                        <span className="font-semibold text-slate-800 truncate block">{c.city}, {c.country}</span>
+                        <span className="font-semibold text-slate-800 dark:text-slate-200 truncate block">{c.city}, {c.country}</span>
+                      </div>
+                    </div>
+
+                    {/* Contacts and Opportunities details */}
+                    <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 space-y-1.5">
+                      <span className="text-[9px] uppercase font-bold text-slate-450 tracking-wider block">Contacts & Opportunités</span>
+                      <div className="space-y-1.5">
+                        {c.leads.map(cl => (
+                          <div key={cl.id} className="text-[11px] text-slate-600 dark:text-slate-400 flex items-start gap-1 flex-wrap">
+                            <span className="font-bold text-slate-800 dark:text-slate-300">{cl.prenom} {cl.nom}</span>
+                            <span className="text-slate-450">({cl.email} | {cl.telephone})</span>
+                            <span className="text-slate-400 dark:text-slate-600">-</span>
+                            <span className="font-bold text-blue-600 dark:text-blue-400">
+                              {cl.valeurEstimee.toLocaleString('fr-FR')} MAD ({translateStatus(cl.statut)})
+                            </span>
+                          </div>
+                        ))}
                       </div>
                     </div>
 
                     <div className="mt-3 text-[11px] text-slate-500 flex items-center gap-1.5">
                       <span className="text-slate-400">{t("lead.referent")}</span>
-                      <span className="font-semibold text-slate-700">{c.commercial}</span>
+                      <span className="font-semibold text-slate-700 dark:text-slate-350">{c.commercial}</span>
                     </div>
                   </div>
 
-                  <div className="mt-5 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+                  <div className="mt-5 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
                     <div className="flex items-center gap-1.5">
                       <span className="text-[10px] text-slate-400">{t("lead.avgScore")}</span>
                       <span className={`font-bold ${c.score >= 80 ? "text-emerald-600" : c.score >= 60 ? "text-amber-600" : "text-slate-500"}`}>
                         {c.score}/100
                       </span>
                     </div>
-                    <span className="text-blue-600 font-bold flex items-center gap-1 hover:text-blue-500">
+                    <span className="text-blue-600 font-bold flex items-center gap-1 hover:text-blue-500 dark:text-blue-400">
                       {t("lead.viewCard")} <ChevronRight className="h-3.5 w-3.5" />
                     </span>
                   </div>
@@ -675,171 +1049,7 @@ onClick={() => {
               )}
             </div>
           </div>
-        </div>
-      );
-    }
-
-    if (activeTab === "contacts") {
-      const filteredContacts = leads.filter(l => {
-        const fullname = `${l.prenom} ${l.nom}`.toLowerCase();
-        const matchesSearch = 
-          fullname.includes(leadSearchTerm.toLowerCase()) ||
-          l.email.toLowerCase().includes(leadSearchTerm.toLowerCase()) ||
-          l.societe.toLowerCase().includes(leadSearchTerm.toLowerCase()) ||
-          l.telephone.toLowerCase().includes(leadSearchTerm.toLowerCase());
-        const matchesStatus = leadStatusFilter === "all" || l.statut === leadStatusFilter;
-        return matchesSearch && matchesStatus;
-      });
-
-      const uniqueCities = Array.from(new Set(leads.map(l => l.ville)));
-      const mainCity = uniqueCities.length > 0 ? uniqueCities[0] : "Casablanca";
-
-      return (
-        <div className="flex-1 bg-slate-50 dark:bg-slate-950 p-6 overflow-y-auto max-h-screen text-slate-850" id="contacts-directory-root">
-          <div className="max-w-7xl mx-auto w-full space-y-6">
-            
-            {/* Header section */}
-            <div className="bg-white border border-slate-200 p-6 rounded-xl shadow-sm">
-              <h2 className="text-xl font-bold font-display text-slate-900 mb-2 flex items-center gap-2">
-                <User className="h-5.5 w-5.5 text-blue-600" />
-                {t("lead.title.contacts")}
-              </h2>
-              <p className="text-slate-500 text-xs leading-relaxed">
-                {t("lead.subtitle.contacts")}
-              </p>
-            </div>
-
-            {/* Micro KPI Banner for Contacts */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="bg-white border border-slate-200 p-4 rounded-xl shadow-sm flex flex-col justify-between">
-                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">{t("lead.totalContacts")}</span>
-                <span className="text-xl font-extrabold text-slate-900 mt-1">{leads.length}</span>
-              </div>
-              <div className="bg-white border border-slate-200 p-4 rounded-xl shadow-sm flex flex-col justify-between">
-                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">{t("lead.avgAffinity")}</span>
-                <span className="text-xl font-extrabold text-blue-600 mt-1">
-                  {Math.round(leads.reduce((sum, l) => sum + l.score, 0) / (leads.length || 1))} %
-                </span>
-              </div>
-              <div className="bg-white border border-slate-200 p-4 rounded-xl shadow-sm flex flex-col justify-between">
-                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">{t("lead.mainCity")}</span>
-                <span className="text-xl font-extrabold text-emerald-600 mt-1">{mainCity}</span>
-              </div>
-            </div>
-
-            {/* Search and Filters */}
-            <div className="bg-white border border-slate-200 p-4 rounded-xl flex flex-col sm:flex-row gap-3 items-center justify-between text-xs shadow-sm">
-              <div className="relative w-full sm:w-80">
-                <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-                <input
-                  type="text"
-                  placeholder={t("lead.searchContactPlaceholder")}
-                  value={leadSearchTerm}
-                  onChange={(e) => setLeadSearchTerm(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 pl-9 pr-4 text-slate-700 text-xs focus:outline-none focus:border-blue-500 focus:bg-white"
-                />
-              </div>
-
-              <div className="flex gap-2 w-full sm:w-auto">
-                <select
-                  value={leadStatusFilter}
-                  onChange={(e) => setLeadStatusFilter(e.target.value)}
-                  className="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-600 font-semibold cursor-pointer text-xs focus:ring-0 w-full sm:w-auto focus:bg-white"
-                >
-                  <option value="all">{t("lead.allStatuses")}</option>
-                  {Object.values(LeadStatus).map(st => (
-                    <option key={st} value={st}>{st}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            {/* Grid list of Contacts */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {filteredContacts.map(l => {
-                const initials = `${l.prenom[0] || ""}${l.nom[0] || ""}`.toUpperCase();
-                return (
-                  <div 
-                    key={l.id}
-                    className="bg-white border border-slate-200 p-5 rounded-xl hover:border-blue-500/50 transition-all flex flex-col justify-between shadow-sm hover:bg-slate-50"
-                  >
-                    <div>
-                      <div className="flex items-start justify-between gap-3 mb-4">
-                        <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center font-bold text-sm text-blue-700">
-                            {initials}
-                          </div>
-                          <div>
-                            <h4 className="font-bold text-slate-900 text-sm">{l.prenom} {l.nom}</h4>
-                            <p className="text-slate-500 text-xs flex items-center gap-1 font-semibold">
-                              <Building className="h-3 w-3 text-slate-400" />
-                              {l.societe}
-                            </p>
-                          </div>
-                        </div>
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                          l.priorite === LeadPriority.HIGH 
-                            ? "bg-rose-50 text-rose-700 border border-rose-200" 
-                            : l.priorite === LeadPriority.MEDIUM 
-                            ? "bg-amber-50 text-amber-700 border border-amber-200" 
-                            : "bg-blue-50 text-blue-700 border border-blue-200"
-                        }`}>
-                          {l.priorite}
-                        </span>
-                      </div>
-
-                      <div className="space-y-2 text-xs text-slate-600 border-t border-slate-100 pt-3">
-                        <div className="flex items-center gap-2">
-                          <Mail className="h-3.5 w-3.5 text-slate-400" />
-                          <span className="truncate">{l.email}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Phone className="h-3.5 w-3.5 text-slate-400" />
-                          <span>{l.telephone}</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-slate-400 text-[10px]">
-                          <MapPin className="h-3.5 w-3.5" />
-                          <span>{l.ville}, {l.pays}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="mt-5 pt-3 border-t border-slate-100 flex items-center justify-between text-xs gap-2">
-                      <button 
-                        onClick={() => {
-                          onSelectLead(l.id);
-                        }}
-                        className="flex-1 text-center py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold rounded-lg transition-colors cursor-pointer text-xs"
-                      >
-                        {t("lead.viewRecord")}
-                      </button>
-                      <button 
-                        onClick={() => {
-                          onSelectLead(l.id);
-                          // We wait briefly for state transition, then simulation trigger click on Pass Call
-                          setTimeout(() => {
-                            const btn = document.querySelector('[onClick*="showLogModal(\'call\')"]') as HTMLElement;
-                            if (btn) btn.click();
-                          }, 150);
-                        }}
-                        className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg transition-colors cursor-pointer"
-                        title={t("lead.quickCall")}
-                      >
-                        <Phone className="h-4 w-4 text-blue-600" />
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-
-              {filteredContacts.length === 0 && (
-                <div className="col-span-2 bg-white border border-slate-200 p-12 text-center text-slate-400 text-xs rounded-xl shadow-sm">
-                  {t("lead.noContactResults")}
-                </div>
-              )}
-            </div>
           </div>
-        </div>
       );
     }
 
@@ -850,7 +1060,14 @@ onClick={() => {
         l.prenom.toLowerCase().includes(leadSearchTerm.toLowerCase()) ||
         l.ville.toLowerCase().includes(leadSearchTerm.toLowerCase());
       const matchesStatus = leadStatusFilter === "all" || l.statut === leadStatusFilter;
-      return matchesSearch && matchesStatus;
+      const matchesPriority = leadPriorityFilter === "all" || l.priorite === leadPriorityFilter;
+      const matchesSource = leadSourceFilter === "all" || l.source === leadSourceFilter;
+      const matchesCommercial = leadCommercialFilter === "all" || 
+        (leadCommercialFilter === "unassigned" ? !l.commercialId : l.commercialId === leadCommercialFilter);
+      const matchesMinBudget = !leadMinBudget || l.valeurEstimee >= Number(leadMinBudget);
+      const matchesMaxBudget = !leadMaxBudget || l.valeurEstimee <= Number(leadMaxBudget);
+      
+      return matchesSearch && matchesStatus && matchesPriority && matchesSource && matchesCommercial && matchesMinBudget && matchesMaxBudget;
     });
 
     return (
@@ -858,13 +1075,10 @@ onClick={() => {
         <div className="max-w-7xl mx-auto w-full space-y-6">
           <div className="bg-white border border-slate-200 p-6 rounded-xl shadow-sm flex flex-col md:flex-row justify-between md:items-center gap-4">
             <div>
-              <h2 className="text-xl font-bold font-display text-slate-900 mb-2 flex items-center gap-2">
+              <h2 className="text-xl font-bold font-display text-slate-900 flex items-center gap-2">
                 <FileText className="h-5.5 w-5.5 text-blue-600" />
                 {t("lead.title.leads")}
               </h2>
-              <p className="text-slate-500 text-xs leading-relaxed max-w-2xl">
-                {t("lead.subtitle.leads")}
-              </p>
             </div>
             {activeUser.role !== Role.COMMERCIAL && (
               <button
@@ -878,29 +1092,101 @@ onClick={() => {
           </div>
 
           {/* Search and Filters */}
-          <div className="bg-white border border-slate-200 p-4 rounded-xl flex flex-col sm:flex-row gap-3 items-center justify-between text-xs shadow-sm">
-            <div className="relative w-full sm:w-80">
-              <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-              <input
-                type="text"
-                placeholder={t("lead.searchPlaceholder")}
-                value={leadSearchTerm}
-                onChange={(e) => setLeadSearchTerm(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 pl-9 pr-4 text-slate-700 text-xs focus:outline-none focus:border-blue-500 focus:bg-white"
-              />
+          <div className="space-y-3">
+            {/* Search Input (Full Width of Card) */}
+            <div className="bg-white border border-slate-200 p-4 rounded-xl shadow-sm text-xs">
+              <div className="relative w-full">
+                <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder={t("lead.searchPlaceholder")}
+                  value={leadSearchTerm}
+                  onChange={(e) => setLeadSearchTerm(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 pl-9 pr-4 text-slate-700 text-xs focus:outline-none focus:border-blue-500 focus:bg-white"
+                />
+              </div>
             </div>
 
-            <div className="flex gap-2 w-full sm:w-auto">
-              <select
-                value={leadStatusFilter}
-                onChange={(e) => setLeadStatusFilter(e.target.value)}
-                className="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-600 font-semibold cursor-pointer text-xs focus:ring-0 w-full sm:w-auto focus:bg-white"
-              >
-                <option value="all">{t("lead.allStages")}</option>
-                {Object.values(LeadStatus).map(st => (
-                  <option key={st} value={st}>{st}</option>
-                ))}
-              </select>
+            {/* Filter Controls (6-Column Grid) */}
+            <div className="bg-white border border-slate-200 p-4 rounded-xl grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-3 text-xs shadow-sm">
+              <div>
+                <label className="block text-slate-500 font-bold mb-1 uppercase text-[9px]">Étape du prospect</label>
+                <select
+                  value={leadStatusFilter}
+                  onChange={(e) => setLeadStatusFilter(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-650 cursor-pointer focus:bg-white focus:outline-none"
+                >
+                  <option value="all">{t("lead.allStages")}</option>
+                  {Object.values(LeadStatus).map(st => (
+                    <option key={st} value={st}>{st}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-slate-500 font-bold mb-1 uppercase text-[9px]">Priorité</label>
+                <select
+                  value={leadPriorityFilter}
+                  onChange={(e) => setLeadPriorityFilter(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-650 cursor-pointer focus:bg-white focus:outline-none"
+                >
+                  <option value="all">Toutes</option>
+                  <option value={LeadPriority.LOW}>Basse</option>
+                  <option value={LeadPriority.MEDIUM}>Moyenne</option>
+                  <option value={LeadPriority.HIGH}>Haute</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-slate-500 font-bold mb-1 uppercase text-[9px]">Source d'acquisition</label>
+                <select
+                  value={leadSourceFilter}
+                  onChange={(e) => setLeadSourceFilter(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-650 cursor-pointer focus:bg-white focus:outline-none"
+                >
+                  <option value="all">Toutes les sources</option>
+                  {Object.values(LeadSource).map(src => (
+                    <option key={src} value={src}>{src}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-slate-500 font-bold mb-1 uppercase text-[9px]">Assigné à</label>
+                <select
+                  value={leadCommercialFilter}
+                  onChange={(e) => setLeadCommercialFilter(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-650 cursor-pointer focus:bg-white focus:outline-none"
+                >
+                  <option value="all">Tout l'équipe</option>
+                  <option value="unassigned">Non attribué</option>
+                  {users.filter(u => u.role === Role.COMMERCIAL).map(u => (
+                    <option key={u.id} value={u.id}>{u.nom}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-slate-500 font-bold mb-1 uppercase text-[9px]">Min Budget (MAD)</label>
+                <input
+                  type="number"
+                  placeholder="Min"
+                  value={leadMinBudget}
+                  onChange={(e) => setLeadMinBudget(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-slate-700 focus:bg-white focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-500 font-bold mb-1 uppercase text-[9px]">Max Budget (MAD)</label>
+                <input
+                  type="number"
+                  placeholder="Max"
+                  value={leadMaxBudget}
+                  onChange={(e) => setLeadMaxBudget(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-slate-700 focus:bg-white focus:outline-none"
+                />
+              </div>
             </div>
           </div>
 
@@ -930,7 +1216,7 @@ onClick={() => {
                   <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-500 mt-4 border-t border-slate-100 pt-3">
                     <div>
                       <span className="text-slate-400 block">{t("lead.budget")}</span>
-                      <span className="font-bold text-slate-800">{l.valeurEstimee.toLocaleString('fr-FR')} €</span>
+                      <span className="font-bold text-slate-800">{l.valeurEstimee.toLocaleString('fr-FR')} MAD</span>
                     </div>
                     <div>
                       <span className="text-slate-400 block">{t("lead.city")}</span>
@@ -963,8 +1249,15 @@ onClick={() => {
 
         {/* Modal for Lead creation/import */}
         {showCreateModal && (
-          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 relative">
+          <div 
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                setShowCreateModal(false);
+              }
+            }}
+            className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50 cursor-pointer"
+          >
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 relative cursor-default">
               <button 
                 onClick={() => setShowCreateModal(false)}
                 className="absolute top-4 right-4 p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-full transition-colors cursor-pointer"
@@ -981,10 +1274,12 @@ onClick={() => {
                   setShowCreateModal(false);
                 }}
                 commercials={users.filter(u => u.role === Role.COMMERCIAL).map(u => ({ id: u.id, nom: u.nom }))}
+                existingLeads={leads || []}
               />
             </div>
           </div>
         )}
+
       </div>
     );
   }
@@ -1004,10 +1299,10 @@ onClick={() => {
         </button>
 
         {/* Stepper Status Progression */}
-        <div className="bg-white border border-slate-200 p-4 rounded-xl flex items-center justify-between flex-wrap gap-4 shadow-sm">
+        <div className="bg-white border border-slate-200 p-4 rounded-xl flex items-center justify-between flex-wrap gap-4 shadow-sm dark:bg-slate-900 dark:border-slate-800">
           <div className="flex items-center gap-3">
-            <h2 className="text-xl font-bold tracking-tight text-slate-900">{lead.societe}</h2>
-            <span className="text-xs text-slate-500">({lead.prenom} {lead.nom})</span>
+            <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">{lead.nomProjet || `Opportunité - ${lead.societe || `${lead.prenom} ${lead.nom}`}`}</h2>
+            <span className="text-xs text-slate-500 dark:text-slate-400">({lead.societe} — {lead.prenom} {lead.nom})</span>
           </div>
 
           {/* Stepper */}
@@ -1156,7 +1451,7 @@ onClick={() => {
                 <div className="flex items-center gap-2.5">
                   <span className="text-slate-400 font-medium w-36">{t("lead.estimatedBudget")}</span>
                   <span className="text-emerald-600 font-bold text-sm">
-                    {lead.valeurEstimee.toLocaleString('fr-FR')} €
+                    {lead.valeurEstimee.toLocaleString('fr-FR')} MAD
                   </span>
                 </div>
                 <div className="flex items-center gap-2.5">
@@ -1504,6 +1799,7 @@ onClick={() => {
                           }`}>
                             {t.statut}
                           </span>
+                          {getTaskTypeBadge(t.type)}
                           {t.critique && (
                             <span className="bg-rose-50 text-rose-600 border border-rose-200 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider">
                               Urgent
@@ -1526,75 +1822,89 @@ onClick={() => {
               )}
             </div>
           </div>
-
         </div>
-
       </div>
 
       {/* Log Interaction Modal popup simulation */}
       {showLogModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-white border border-slate-200 rounded-xl w-full max-w-md overflow-hidden text-slate-800 shadow-2xl">
-            <div className="p-4 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
-              <h4 className="font-bold text-sm flex items-center gap-2">
+          <div className={`bg-white border border-slate-200 rounded-xl w-full ${showLogModal === "email" ? "max-w-2xl" : "max-w-md"} overflow-hidden text-slate-800 shadow-2xl dark:bg-slate-900 dark:border-slate-800`}>
+            <div className="p-4 bg-slate-50 border-b border-slate-200 flex justify-between items-center dark:bg-slate-850 dark:border-slate-800">
+              <h4 className="font-bold text-sm flex items-center gap-2 dark:text-white">
                 {showLogModal === "call" && <><Phone className="h-4.5 w-4.5 text-blue-600" /> Enregistrer un Appel</>}
-                {showLogModal === "email" && <><Mail className="h-4.5 w-4.5 text-amber-600" /> Enregistrer un Email</>}
+                {showLogModal === "email" && <><Mail className="h-4.5 w-4.5 text-blue-605" /> Rédiger &amp; Envoyer un Email</>}
                 {showLogModal === "meeting" && <><Calendar className="h-4.5 w-4.5 text-purple-600" /> Enregistrer un Rendez-vous</>}
                 {showLogModal === "task" && <><Plus className="h-4.5 w-4.5 text-pink-600" /> Créer une nouvelle Tâche</>}
               </h4>
-              <button onClick={() => setShowLogModal(null)} className="p-1 hover:bg-slate-200 rounded-lg text-slate-500 hover:text-slate-850 transition-colors">
+              <button onClick={() => setShowLogModal(null)} className="p-1 hover:bg-slate-200 rounded-lg text-slate-500 hover:text-slate-850 transition-colors dark:hover:bg-slate-800">
                 <X className="h-4.5 w-4.5" />
               </button>
             </div>
 
-            {showLogModal !== "task" ? (
-              // Generic Interaction Form
+            {showLogModal === "email" ? (
+              <form onSubmit={handleSendEmail} className="p-5 space-y-4 text-xs dark:text-slate-200">
+                <div className="bg-blue-50 border border-blue-100 p-3.5 rounded-xl dark:bg-slate-955 dark:border-slate-850 flex items-center justify-between text-xs">
+                  <div>
+                    <span className="font-bold text-slate-800 dark:text-slate-200 block">{lead?.nomProjet || `Opportunité - ${lead?.societe || `${lead?.prenom} ${lead?.nom}`}`}</span>
+                    <span className="text-[10px] text-slate-550 dark:text-slate-400 block mt-1 font-semibold">{lead?.societe}</span>
+                    <span className="text-[9px] text-slate-405 block mt-1 leading-none">Contact : {lead?.prenom} {lead?.nom} • {lead?.email} {lead?.telephone ? `• ${lead?.telephone}` : ""}</span>
+                  </div>
+                  <span className="px-2 py-0.5 rounded text-[9px] font-extrabold bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300">Destinataire</span>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="block text-[10px] text-slate-400 uppercase font-bold tracking-wider">Appliquer un modèle :</label>
+                  <div className="grid grid-cols-2 gap-2 max-h-28 overflow-y-auto pr-1">
+                    {EMAIL_TEMPLATES.map(tpl => (
+                      <button type="button" key={tpl.id} onClick={() => applyEmailTemplate(tpl.id)} className="text-left p-2.5 rounded-lg border border-slate-150 hover:border-blue-500 hover:bg-blue-50/10 transition-all dark:border-slate-800 dark:hover:bg-slate-800/65 text-[10px] cursor-pointer">
+                        <p className="font-bold text-slate-800 dark:text-slate-200 leading-tight">{tpl.name}</p>
+                        <p className="text-[8px] text-slate-400 dark:text-slate-500 truncate mt-0.5">{tpl.desc}</p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="bg-purple-50/30 border border-purple-100 p-3 rounded-lg dark:bg-purple-950/10 dark:border-purple-900/35 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-purple-800 flex items-center gap-1 text-[10px] dark:text-purple-405">
+                      <Sparkles className="h-3.5 w-3.5 animate-pulse" /> Rédacteur IA
+                    </span>
+                    <select value={emailAiTone} onChange={(e) => setEmailAiTone(e.target.value)} className="bg-white border border-slate-200 rounded p-1 text-[10px] focus:outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-white">
+                      <option value="professional">Professionnel</option>
+                      <option value="friendly">Amical</option>
+                      <option value="urgent">Urgent</option>
+                    </select>
+                  </div>
+                  <button type="button" onClick={handleAIGenerateEmail} disabled={isGeneratingEmail} className="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-1.5 rounded text-[10px] transition-colors cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1">
+                    {isGeneratingEmail ? <><Loader2 className="h-3 w-3 animate-spin" /> Génération...</> : <><Sparkles className="h-3 w-3" /> Rédiger avec l'IA</>}
+                  </button>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="block text-[10px] text-slate-400 uppercase font-bold tracking-wider">Objet du message :</label>
+                  <input type="text" required placeholder="Ex: Suite à notre appel de ce matin..." value={emailSubject} onChange={(e) => setEmailSubject(e.target.value)} className="w-full bg-slate-50 rounded-lg p-2.5 border border-slate-200 text-slate-850 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-slate-800 dark:border-slate-700 dark:text-white" />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="block text-[10px] text-slate-400 uppercase font-bold tracking-wider">Message :</label>
+                  <textarea rows={8} required placeholder="Rédigez votre email ici..." value={emailBody} onChange={(e) => setEmailBody(e.target.value)} className="w-full bg-slate-50 rounded-lg p-3 border border-slate-200 text-slate-850 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-slate-800 dark:border-slate-700 dark:text-white leading-relaxed font-sans" />
+                </div>
+                <div className="flex justify-end gap-2.5 pt-3 border-t border-slate-100 dark:border-slate-800">
+                  <button type="button" onClick={() => setShowLogModal(null)} className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-lg cursor-pointer dark:bg-slate-880 dark:text-slate-300 dark:hover:bg-slate-700">Annuler</button>
+                  <button type="submit" disabled={isSendingEmail} className="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg flex items-center gap-1.5 cursor-pointer shadow-md shadow-blue-500/10 disabled:opacity-50">
+                    {isSendingEmail ? <><Loader2 className="h-4 w-4 animate-spin" /> Envoi...</> : <><Send className="h-4 w-4" /> Envoyer et Enregistrer</>}
+                  </button>
+                </div>
+              </form>
+            ) : showLogModal !== "task" ? (
               <form onSubmit={handleLogInteraction} className="p-4 space-y-4 text-xs">
                 <div>
                   <label className="block text-[11px] text-slate-500 uppercase font-semibold mb-1.5">Description de l'échange :</label>
-                  <textarea
-                    rows={4}
-                    required
-                    placeholder={
-                      showLogModal === "call" ? "Résumé de la conversation téléphonique, accords conclus, objections soulevées..." :
-                      showLogModal === "email" ? "Sujet du courriel et points clés discutés ou envoyés..." :
-                      "Sujet de la réunion, participants, comptes rendus..."
-                    }
-                    value={logDesc}
-                    onChange={(e) => setLogDesc(e.target.value)}
-                    className="w-full bg-slate-50 rounded-lg p-2.5 border border-slate-200 text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:bg-white"
-                  />
+                  <textarea rows={4} required placeholder={showLogModal === "call" ? "Résumé de la conversation..." : "Sujet de la réunion..."} value={logDesc} onChange={(e) => setLogDesc(e.target.value)} className="w-full bg-slate-50 rounded-lg p-2.5 border border-slate-200 text-slate-850 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:bg-white dark:bg-slate-800 dark:border-slate-700 dark:text-white" />
                 </div>
-
-                {showLogModal !== "email" && (
-                  <div>
-                    <label className="block text-[11px] text-slate-500 uppercase font-semibold mb-1.5">Durée estimée (minutes) :</label>
-                    <input
-                      type="number"
-                      required
-                      min={1}
-                      max={240}
-                      value={logDuration}
-                      onChange={(e) => setLogDuration(Number(e.target.value))}
-                      className="w-full bg-slate-50 rounded-lg p-2 border border-slate-200 text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:bg-white"
-                    />
-                  </div>
-                )}
-
+                <div>
+                  <label className="block text-[11px] text-slate-500 uppercase font-semibold mb-1.5">Durée estimée (minutes) :</label>
+                  <input type="number" required min={1} max={240} value={logDuration} onChange={(e) => setLogDuration(Number(e.target.value))} className="w-full bg-slate-50 rounded-lg p-2 border border-slate-200 text-slate-850 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:bg-white dark:bg-slate-800 dark:border-slate-700 dark:text-white" />
+                </div>
                 <div className="flex justify-end gap-2.5 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowLogModal(null)}
-                    className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-lg"
-                  >
-                    Annuler
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg shadow-md shadow-blue-500/10"
-                  >
-                    Enregistrer
-                  </button>
+                  <button type="button" onClick={() => setShowLogModal(null)} className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-lg">Annuler</button>
+                  <button type="submit" className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg shadow-md shadow-blue-500/10">Enregistrer</button>
                 </div>
               </form>
             ) : (
@@ -1621,6 +1931,20 @@ onClick={() => {
                     onChange={(e) => setTaskDueDate(e.target.value)}
                     className="w-full bg-slate-50 rounded-lg p-2 border border-slate-200 text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:bg-white"
                   />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] text-slate-500 uppercase font-semibold mb-1.5">Type de tâche :</label>
+                  <select
+                    value={taskType}
+                    onChange={(e) => setTaskType(e.target.value as TaskType)}
+                    className="w-full bg-slate-50 rounded-lg p-2 border border-slate-200 text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:bg-white cursor-pointer"
+                  >
+                    <option value={TaskType.CALL}>Appeler</option>
+                    <option value={TaskType.EMAIL}>Envoyer un email</option>
+                    <option value={TaskType.MEETING}>Rendez-vous</option>
+                    <option value={TaskType.OTHER}>Autre / Relance</option>
+                  </select>
                 </div>
 
                 <div className="flex items-center gap-2.5 pt-1.5">
@@ -1692,7 +2016,7 @@ onClick={() => {
                 />
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-[11px] text-slate-500 uppercase font-semibold mb-1.5">Échéance :</label>
                   <input
@@ -1713,6 +2037,19 @@ onClick={() => {
                     {users.map((u) => (
                       <option key={u.id} value={u.id}>{u.nom}</option>
                     ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[11px] text-slate-500 uppercase font-semibold mb-1.5">Type de tâche :</label>
+                  <select
+                    value={editTaskType}
+                    onChange={(e) => setEditTaskType(e.target.value as TaskType)}
+                    className="w-full bg-slate-50 rounded-lg p-2 border border-slate-200 text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:bg-white cursor-pointer"
+                  >
+                    <option value={TaskType.CALL}>Appeler</option>
+                    <option value={TaskType.EMAIL}>Envoyer un email</option>
+                    <option value={TaskType.MEETING}>Rendez-vous</option>
+                    <option value={TaskType.OTHER}>Autre / Relance</option>
                   </select>
                 </div>
               </div>
@@ -1763,7 +2100,7 @@ onClick={() => {
               </button>
             </div>
             <form onSubmit={handleSaveEditedLead} className="p-4 space-y-4 text-xs">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-[11px] text-slate-500 uppercase font-semibold mb-1.5">Société</label>
                   <input
@@ -1771,7 +2108,17 @@ onClick={() => {
                     required
                     value={editLeadSociete}
                     onChange={(e) => setEditLeadSociete(e.target.value)}
-                    className="w-full bg-slate-50 rounded-lg p-2 border border-slate-200 text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:bg-white"
+                    className="w-full bg-slate-50 rounded-lg p-2 border border-slate-200 text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:bg-white dark:bg-slate-800 dark:border-slate-700 dark:text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] text-slate-500 uppercase font-semibold mb-1.5">Nom du Projet / Offre</label>
+                  <input
+                    type="text"
+                    required
+                    value={editLeadNomProjet}
+                    onChange={(e) => setEditLeadNomProjet(e.target.value)}
+                    className="w-full bg-slate-50 rounded-lg p-2 border border-slate-200 text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:bg-white dark:bg-slate-800 dark:border-slate-700 dark:text-white"
                   />
                 </div>
                 <div>
@@ -1781,7 +2128,7 @@ onClick={() => {
                     required
                     value={editLeadPrenom}
                     onChange={(e) => setEditLeadPrenom(e.target.value)}
-                    className="w-full bg-slate-50 rounded-lg p-2 border border-slate-200 text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:bg-white"
+                    className="w-full bg-slate-50 rounded-lg p-2 border border-slate-200 text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:bg-white dark:bg-slate-800 dark:border-slate-700 dark:text-white"
                   />
                 </div>
               </div>

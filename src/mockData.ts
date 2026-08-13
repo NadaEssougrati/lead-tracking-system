@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { Role, LeadSource, LeadStatus, LeadPriority, TaskStatus, ActivityType, User, Lead, Activity, Task, SystemNotification, Quote } from "./types";
+import { Role, LeadSource, LeadStatus, LeadPriority, TaskStatus, ActivityType, User, Lead, Activity, Task, SystemNotification, Quote, TaskType } from "./types";
 
 export const mockUsers: User[] = [
   {
@@ -76,6 +76,7 @@ export const mockLeads: Lead[] = [
     dateCreation: "2026-07-10T10:00:00Z",
     derniereActivite: "2026-07-16T15:30:00Z",
     notes: "Société de services numériques recherchant un outil d'automatisation des relances. Décideur principal intéressé par un déploiement rapide.",
+    nomProjet: "Automatisation Relances Marketing",
     documents: [
       { id: "doc-1", nom: "Cahier_des_charges_TechSolutions.pdf", dateAjout: "2026-07-10", taille: "1.2 MB" },
       { id: "doc-2", nom: "Proposition_V1_TechSolutions.pdf", dateAjout: "2026-07-14", taille: "850 KB" }
@@ -100,6 +101,7 @@ export const mockLeads: Lead[] = [
     dateCreation: "2026-07-08T09:15:00Z",
     derniereActivite: "2026-07-15T11:00:00Z",
     notes: "Rencontrée au salon Retail Expo. Souhaite connecter son ERP actuel avec notre Tracking Lead System.",
+    nomProjet: "Intégration ERP & Tracking",
     documents: [
       { id: "doc-3", nom: "Note_Interne_MedRetail.docx", dateAjout: "2026-07-09", taille: "150 KB" }
     ]
@@ -123,6 +125,7 @@ export const mockLeads: Lead[] = [
     dateCreation: "2026-07-05T14:22:00Z",
     derniereActivite: "2026-07-16T17:10:00Z",
     notes: "Projet d'envergure internationale. Budget validé. Besoin de fonctionnalités d'analyse prédictive IA avancées.",
+    nomProjet: "Analyse Prédictive IA",
     documents: [
       { id: "doc-4", nom: "GlobalTech_RFP_Response.pdf", dateAjout: "2026-07-06", taille: "4.5 MB" }
     ]
@@ -146,6 +149,7 @@ export const mockLeads: Lead[] = [
     dateCreation: "2026-07-01T11:05:00Z",
     derniereActivite: "2026-07-14T10:00:00Z",
     notes: "Recommandé par notre client historique Atlas IT. Demande de devis envoyé le 12 Juillet. En attente de validation.",
+    nomProjet: "Tracking Leads de Vente",
     documents: [
       { id: "doc-5", nom: "Devis_CasaNet_2026_V1.pdf", dateAjout: "2026-07-12", taille: "1.1 MB" }
     ]
@@ -169,6 +173,7 @@ export const mockLeads: Lead[] = [
     dateCreation: "2026-06-25T08:30:00Z",
     derniereActivite: "2026-07-16T09:00:00Z",
     notes: "Négociation finale concernant les remises de volume et les niveaux de support SLA.",
+    nomProjet: "Contrat Volume Automobile",
     documents: [
       { id: "doc-6", nom: "Contrat_MunichAuto_SLA.docx", dateAjout: "2026-07-05", taille: "2.3 MB" }
     ]
@@ -313,6 +318,7 @@ export const mockTasks: Task[] = [
     dateEcheance: "2026-07-20",
     assigneA: "Mohamed El Fassi",
     critique: true,
+    type: TaskType.OTHER
   },
   {
     id: "task-2",
@@ -323,6 +329,7 @@ export const mockTasks: Task[] = [
     dateEcheance: "2026-07-13",
     assigneA: "Mohamed El Fassi",
     critique: false,
+    type: TaskType.CALL
   },
   {
     id: "task-3",
@@ -333,6 +340,7 @@ export const mockTasks: Task[] = [
     dateEcheance: "2026-07-18",
     assigneA: "Alex Martin",
     critique: true,
+    type: TaskType.MEETING
   },
   {
     id: "task-4",
@@ -343,6 +351,7 @@ export const mockTasks: Task[] = [
     dateEcheance: "2026-07-25",
     assigneA: "Mohamed El Fassi",
     critique: false,
+    type: TaskType.OTHER
   },
   {
     id: "task-5",
@@ -353,6 +362,7 @@ export const mockTasks: Task[] = [
     dateEcheance: "2026-07-19",
     assigneA: "Mohamed El Fassi",
     critique: true,
+    type: TaskType.CALL
   }
 ];
 

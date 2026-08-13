@@ -16,6 +16,12 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
     headers: { "Content-Type": "application/json", ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}), ...options.headers },
   });
 
+  if (response.status === 401) {
+    setAccessToken(null);
+    window.location.reload();
+    throw new Error("Session expirée. Veuillez vous reconnecter.");
+  }
+
   if (response.status === 204) {
     return {} as T;
   }
@@ -37,6 +43,12 @@ export async function uploadFile<T>(path: string, formData: FormData, options: R
     },
   });
 
+  if (response.status === 401) {
+    setAccessToken(null);
+    window.location.reload();
+    throw new Error("Session expirée. Veuillez vous reconnecter.");
+  }
+
   if (response.status === 204) {
     return {} as T;
   }
@@ -56,42 +68,23 @@ export async function login(email: string, motDePasse: string) {
   return body.data.user;
 }
 
-export async function sendEmail(data: { leadId: string; expediteurId?: string; sujet: string; corps: string; emailId?: number }) {
-  return api<{ success: boolean; data: { messageId: string; emailId: number; activiteId: string; to: string; subject: string } }>("/emails/send", { method: "POST", body: JSON.stringify(data) });
+export async function sendEmail(data: { leadId: string; subject: string; body: string }) {
+  return api<any>("/emails/send", { method: "POST", body: JSON.stringify(data) });
 }
 
-export async function saveDraft(data: { leadId: string; expediteurId?: string; sujet: string; corps: string; emailId?: number }) {
-  return api<{ success: boolean; data: any }>("/emails/draft", { method: "POST", body: JSON.stringify(data) });
+export async function getEmailHistory(leadId: string) {
+  return api<any[]>(`/emails/history/${leadId}`);
 }
 
-export async function getEmailLeads() {
-  return api<{ success: boolean; data: Array<{ id: string; nom: string; prenom: string; email: string; societe: string }> }>("/emails/leads");
-}
-
-export async function getEmails(params?: { statut?: string; leadId?: string; priorite?: string; etat?: string; search?: string }) {
-  const qs = new URLSearchParams();
-  if (params?.statut) qs.set("statut", params.statut);
-  if (params?.leadId) qs.set("leadId", params.leadId);
-  if (params?.priorite) qs.set("priorite", params.priorite);
-  if (params?.etat) qs.set("etat", params.etat);
-  if (params?.search) qs.set("search", params.search);
-  const query = qs.toString();
-  return api<{ success: boolean; data: any[] }>(`/emails${query ? `?${query}` : ""}`);
-}
-
-export async function updateDraft(emailId: number, data: { sujet?: string; corps?: string }) {
-  return api<{ success: boolean; data: any }>(`/emails/${emailId}`, { method: "PUT", body: JSON.stringify(data) });
-}
-
-export async function deleteEmail(emailId: number) {
-  return api<{ success: boolean; data: { id: number } }>(`/emails/${emailId}`, { method: "DELETE" });
+export async function simulateIncomingEmail(leadId: string, subject?: string, body?: string) {
+  return api<any>("/emails/simulate-incoming", { method: "POST", body: JSON.stringify({ leadId, subject, body }) });
 }
 
 export async function getEmailConfig() {
-  return api<{ gmailUser: string; hasPassword: boolean }>("/emails/config");
+  return api<{ emailProvider: "resend" | "smtp"; resendFromEmail: string; hasResendApiKey: boolean }>("/emails/config");
 }
 
-export async function saveEmailConfig(data: { gmailUser: string; gmailPass: string }) {
+export async function saveEmailConfig(data: { emailProvider: string; resendFromEmail?: string; resendApiKey?: string }) {
   const response = await fetch(`${API_URL}/emails/config`, {
     method: "PUT",
     headers: { "Content-Type": "application/json", ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) },
@@ -99,11 +92,11 @@ export async function saveEmailConfig(data: { gmailUser: string; gmailPass: stri
   });
   const body = await response.json().catch(() => null);
   if (!response.ok) throw new Error(body?.message || "Erreur de communication avec le serveur.");
-  return body as { success: boolean; message?: string; data: { gmailUser: string; hasPassword: boolean } };
+  return body as { success: boolean; message?: string; data: { emailProvider: "resend" | "smtp"; resendFromEmail: string; hasResendApiKey: boolean } };
 }
 
-export async function testEmailConfig() {
-  return api<{ success: boolean; message?: string }>("/emails/test-smtp", { method: "POST", body: JSON.stringify({}) });
+export async function testEmailConfig(data: { emailProvider: string; resendApiKey?: string; resendFromEmail?: string }) {
+  return api<{ success: boolean; message?: string }>("/emails/test-smtp", { method: "POST", body: JSON.stringify(data) });
 }
 
 export { API_URL };

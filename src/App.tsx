@@ -17,7 +17,7 @@ import {
   Quote,
   SystemNotification
 } from "./types";
-import { api, login, setAccessToken } from "./api";
+import { api, login, setAccessToken, getEmailConfig } from "./api";
 import { Eye, EyeOff } from "lucide-react";
 
 import Sidebar, { SidebarTab } from "./components/Sidebar";
@@ -25,7 +25,6 @@ import Header from "./components/Header";
 import DashboardStats from "./components/DashboardStats";
 import PipelineKanban from "./components/PipelineKanban";
 import LeadDetails from "./components/LeadDetails";
-import LeadForm from "./components/LeadForm";
 import QuoteGenerator from "./components/QuoteGenerator";
 import Settings from "./components/Settings";
 import UserManagement from "./components/UserManagement";
@@ -36,6 +35,27 @@ import EmailComposer from "./components/EmailComposer";
 import SystemSettings from "./components/SystemSettings";
 import { usePreferences } from "./AppPreferences";
 
+const getInitialTab = (): SidebarTab => {
+  const rawHash = typeof window !== "undefined" ? window.location.hash.slice(1) : "";
+  if (!rawHash) return "dashboard";
+  const [tabPart] = rawHash.split("?");
+  const validTabs: SidebarTab[] = [
+    "dashboard", "opportunities", "leads", "companies", 
+    "contacts", "tasks", "calls", "emails", "meetings", 
+    "dashboards_analysis", "reports", "team", "settings", "system_settings"
+  ];
+  return validTabs.includes(tabPart as SidebarTab) ? (tabPart as SidebarTab) : "dashboard";
+};
+
+const getInitialLeadId = (): string | null => {
+  const rawHash = typeof window !== "undefined" ? window.location.hash.slice(1) : "";
+  if (!rawHash) return null;
+  const [, queryPart] = rawHash.split("?");
+  if (!queryPart) return null;
+  const params = new URLSearchParams(queryPart);
+  return params.get("id");
+};
+
 export default function App() {
   const { t } = usePreferences();
   const [email, setEmail] = useState("");
@@ -45,9 +65,10 @@ export default function App() {
   const [isAuthenticating, setIsAuthenticating] = useState(Boolean(localStorage.getItem("accessToken")));
   const [isLoading, setIsLoading] = useState(Boolean(localStorage.getItem("accessToken")));
   // Core application states
-  const [activeTab, setActiveTab] = useState<SidebarTab>("dashboard");
+  const [activeTab, setActiveTab] = useState<SidebarTab>(getInitialTab);
   const [activeUser, setActiveUser] = useState<User>({ id: "", nom: "", email: "", role: Role.ADMIN, telephone: "", actif: false });
   const [users, setUsers] = useState<User[]>([]);
+  const [emailProvider, setEmailProvider] = useState<"resend" | "smtp">("smtp");
   const [leads, setLeads] = useState<Lead[]>([]);
   const [activities, setActivities] = useState<Activity[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -63,11 +84,11 @@ export default function App() {
     }, 5000);
   };
 
-  const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
+  const [selectedLeadId, setSelectedLeadId] = useState<string | null>(getInitialLeadId);
   const [searchTerm, setSearchTerm] = useState("");
 
   const toRole = (role: string): Role => role === "AgentMarketing" ? Role.MARKETING : role as Role;
-  const toUser = (user: any): User => ({ id: user.id, nom: `${user.prenom || ""} ${user.nom || ""}`.trim(), email: user.email, role: toRole(user.role), telephone: user.telephone || "", actif: user.actif, avatar: user.avatar });
+  const toUser = (user: any): User => ({ id: user.id, nom: `${user.prenom || ""} ${user.nom || ""}`.trim(), email: user.email, role: toRole(user.role), telephone: user.telephone || "", actif: user.actif, avatar: user.avatar, smtpHost: user.smtpHost, smtpPort: user.smtpPort, smtpUser: user.smtpUser, smtpPass: user.smtpPass });
   const toSource = (source: string): Lead["source"] => ({ SiteWeb: "Site web", ReseauxSociaux: "Réseaux sociaux", Recommandation: "Recommandation", Emailing: "Emailing", Salon: "Salon professionnel", Telephone: "Appel téléphonique" }[source] || source) as Lead["source"];
   const toStatus = (statut: string): LeadStatus => ({ Nouveau: "Nouveau", PremierContact: "Contacté", Qualification: "Qualifié", PropositionCommerciale: "Proposition envoyée", Negociation: "Négociation", Gagne: "Converti (Gagné)", Perdu: "Perdu" }[statut] || statut) as LeadStatus;
   const toLead = (lead: any): Lead => ({ ...lead, source: toSource(lead.source), statut: toStatus(lead.statut), commercialId: lead.commercialId, societe: lead.entreprise?.nom || "", documents: lead.documents || [], valeurEstimee: Number(lead.valeurEstimee), dateCreation: lead.dateCreation, derniereActivite: lead.derniereActivite || lead.dateCreation });
@@ -78,7 +99,8 @@ export default function App() {
     assigneA: item.utilisateur ? `${item.utilisateur.prenom} ${item.utilisateur.nom}` : item.assigneA || "",
     utilisateurId: item.utilisateur?.id || item.utilisateurId,
     dateEcheance: item.dateEcheance,
-    critique: item.critique ?? false
+    critique: item.critique ?? false,
+    type: item.type || "other"
   });
   const toQuote = (item: any): Quote => ({ ...item, montant: Number(item.montant), statut: ({ Envoye: "Envoyé", Accepte: "Accepté", Refuse: "Refusé" }[item.statut] || item.statut) as Quote["statut"], dateEmission: item.dateCreation, dateValidite: item.dateCreation, articles: Array.isArray(item.lignes) ? item.lignes : [] });
   const toNotification = (item: any): SystemNotification => ({ id: item.id, titre: item.titre, message: item.message, date: item.dateCreation, lue: item.estLue, type: "info", leadId: item.leadId, taskId: item.taskId });
@@ -90,7 +112,18 @@ export default function App() {
     setActiveUser(toUser(me)); setUsers(apiUsers.map(toUser)); setLeads(apiLeads.map(toLead)); setActivities(apiActivities.map(toActivity)); setTasks(apiTasks.map(toTask)); setQuotes(apiQuotes.map(toQuote)); setNotifications(apiNotifications.map(toNotification));
   };
 
-  useEffect(() => { if (!localStorage.getItem("accessToken")) return; loadData().catch(() => { setAccessToken(null); setAuthError(t("login.sessionExpired")); }).finally(() => { setIsAuthenticating(false); setIsLoading(false); }); }, []);
+  useEffect(() => { 
+    if (!localStorage.getItem("accessToken")) return; 
+    loadData().catch(() => { setAccessToken(null); setAuthError(t("login.sessionExpired")); }).finally(() => { setIsAuthenticating(false); setIsLoading(false); }); 
+    
+    getEmailConfig()
+      .then(res => {
+        if (res) {
+          setEmailProvider(res.emailProvider || "smtp");
+        }
+      })
+      .catch(console.error);
+  }, []);
 
   // Poll notifications so actions performed by other team members
   // (emails sent, tasks added, quotes issued...) appear in real time.
@@ -122,6 +155,67 @@ export default function App() {
     refreshNotifications(); // fetch immediately on mount
     const interval = window.setInterval(refreshNotifications, 10000);
     return () => window.clearInterval(interval);
+  }, []);
+
+  // Synchronize state changes with URL hash
+  useEffect(() => {
+    if (!localStorage.getItem("accessToken")) return;
+    let hash = `#${activeTab}`;
+    if (selectedLeadId) {
+      hash += `?id=${selectedLeadId}`;
+    }
+    if (window.location.hash !== hash) {
+      window.history.pushState(null, "", hash);
+    }
+  }, [activeTab, selectedLeadId]);
+
+  // Synchronize URL hash changes (like browser back/forward buttons) with React state
+  useEffect(() => {
+    const handleHashChange = () => {
+      if (!localStorage.getItem("accessToken")) return;
+      const rawHash = window.location.hash.slice(1);
+      if (!rawHash) {
+        setActiveTab("dashboard");
+        setSelectedLeadId(null);
+        return;
+      }
+
+      const [tabPart, queryPart] = rawHash.split("?");
+      const validTabs: SidebarTab[] = [
+        "dashboard",
+        "opportunities",
+        "leads",
+        "companies",
+        "contacts",
+        "tasks",
+        "calls",
+        "emails",
+        "meetings",
+        "dashboards_analysis",
+        "reports",
+        "team",
+        "settings",
+        "system_settings"
+      ];
+
+      if (validTabs.includes(tabPart as SidebarTab)) {
+        setActiveTab(tabPart as SidebarTab);
+        if (queryPart) {
+          const params = new URLSearchParams(queryPart);
+          const leadId = params.get("id");
+          setSelectedLeadId(leadId);
+        } else {
+          setSelectedLeadId(null);
+        }
+      }
+    };
+
+    window.addEventListener("hashchange", handleHashChange);
+    // Parse the hash on initial load
+    if (localStorage.getItem("accessToken")) {
+      handleHashChange();
+    }
+    return () => window.removeEventListener("hashchange", handleHashChange);
   }, []);
 
   const handleLogin = async (event: React.FormEvent) => {
@@ -200,7 +294,8 @@ export default function App() {
       dateEcheance: new Date(taskData.dateEcheance).toISOString(),
       leadId: taskData.leadId,
       utilisateurId: taskData.utilisateurId || activeUser.id,
-      critique: taskData.critique || false
+      critique: taskData.critique || false,
+      type: taskData.type || "other"
     };
     const created = await api<any>("/tasks", { method: "POST", body: JSON.stringify(payload) });
     setTasks((current) => [toTask(created), ...current]);
@@ -214,6 +309,7 @@ export default function App() {
     if (updates.dateEcheance !== undefined) payload.dateEcheance = updates.dateEcheance;
     if (updates.utilisateurId !== undefined) payload.utilisateurId = updates.utilisateurId;
     if (updates.critique !== undefined) payload.critique = updates.critique;
+    if (updates.type !== undefined) payload.type = updates.type;
     if (Object.keys(payload).length === 0) return;
 
     const updated = await api<any>(`/tasks/${taskId}`, { method: "PATCH", body: JSON.stringify(payload) });
@@ -236,6 +332,30 @@ export default function App() {
 
   // Update lead
   const handleUpdateLead = async (updatedLead: Lead) => {
+    let entrepriseId: string | null = (updatedLead as any).entrepriseId || null;
+
+    if (updatedLead.societe && updatedLead.societe.trim()) {
+      try {
+        const companyList = await api<any[]>("/companies");
+        const matched = companyList.find(
+          (c) => c.nom.toLowerCase() === updatedLead.societe.trim().toLowerCase()
+        );
+        if (matched) {
+          entrepriseId = matched.id;
+        } else {
+          const newCompany = await api<any>("/companies", {
+            method: "POST",
+            body: JSON.stringify({ nom: updatedLead.societe.trim() }),
+          });
+          entrepriseId = newCompany.id;
+        }
+      } catch (err) {
+        console.error("Error updating company relation:", err);
+      }
+    } else {
+      entrepriseId = null;
+    }
+
     const body: any = {
       nom: updatedLead.nom,
       prenom: updatedLead.prenom,
@@ -246,7 +366,9 @@ export default function App() {
       pays: updatedLead.pays,
       notes: updatedLead.notes,
       valeurEstimee: updatedLead.valeurEstimee,
-      commercialId: updatedLead.commercialId
+      commercialId: updatedLead.commercialId,
+      nomProjet: updatedLead.nomProjet,
+      entrepriseId
     };
     if (typeof (updatedLead as any).score === "number") body.score = (updatedLead as any).score;
 
@@ -355,6 +477,15 @@ export default function App() {
     }
   };
 
+  const handleMarkAllNotificationsAsRead = async () => {
+    setNotifications(notifications.map(n => ({ ...n, lue: true })));
+    try {
+      await api("/notifications/read-all", { method: "PATCH" });
+    } catch (e) {
+      console.error("Erreur lors du marquage des notifications comme lues", e);
+    }
+  };
+
   const handleMarkNotificationAsRead = async (id: string) => {
     const notif = notifications.find(n => n.id === id);
     setNotifications(notifications.map(n => n.id === id ? { ...n, lue: true } : n));
@@ -381,6 +512,9 @@ export default function App() {
       case "companies": return t("header.title.companies");
       case "contacts": return t("header.title.contacts");
       case "tasks": return t("header.title.tasks");
+      case "calls": return t("header.title.calls");
+      case "emails": return `${t("header.title.emails")} (${emailProvider === "resend" ? "Mode Resend" : "Mode SMTP Individuel"})`;
+      case "meetings": return t("header.title.meetings");
       case "reports": return t("header.title.reports");
       case "team": return t("header.title.team");
       case "settings": return t("nav.accountSettings");
@@ -443,8 +577,7 @@ export default function App() {
           notifications={notifications}
           onMarkNotificationAsRead={handleMarkNotificationAsRead}
           onClearNotifications={handleClearNotifications}
-          searchTerm={activeTab === "dashboard" || activeTab === "opportunities" ? searchTerm : undefined as any}
-          onSearchChange={setSearchTerm}
+          onMarkAllNotificationsAsRead={handleMarkAllNotificationsAsRead}
           currentPageTitle={getPageTitle()}
         />
 
@@ -468,6 +601,7 @@ export default function App() {
               onUpdateLeadStatus={handleUpdateLeadStatus}
               userRole={activeUser.role}
               commercialId={activeUser.id}
+              users={users}
             />
           )}
 
@@ -520,6 +654,8 @@ export default function App() {
               onAddActivity={handleAddActivity}
               onDeleteActivity={handleDeleteActivity}
               onEditActivity={handleEditActivity}
+              tasks={tasks}
+              onUpdateTaskStatus={handleUpdateTaskStatus}
             />
           )}
           {activeTab === "emails" && (
@@ -535,6 +671,8 @@ export default function App() {
                   console.error("Erreur lors du rafraîchissement des activités", e);
                 }
               }}
+              tasks={tasks}
+              onUpdateTaskStatus={handleUpdateTaskStatus}
             />
           )}
           {activeTab === "meetings" && (
@@ -548,6 +686,8 @@ export default function App() {
               onAddActivity={handleAddActivity}
               onDeleteActivity={handleDeleteActivity}
               onEditActivity={handleEditActivity}
+              tasks={tasks}
+              onUpdateTaskStatus={handleUpdateTaskStatus}
             />
           )}
 

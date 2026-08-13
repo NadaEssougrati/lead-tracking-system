@@ -12,6 +12,7 @@ import resourcesRoutes from "./routes/resources.routes.js";
 import documentsRoutes from "./routes/documents.routes.js";
 import dashboardRoutes from "./routes/dashboard.routes.js";
 import aiRoutes from "./routes/ai.routes.js";
+import emailsRoutes from "./routes/emails.routes.js";
 
 const app = express();
 
@@ -63,6 +64,7 @@ app.use("/api", resourcesRoutes);
 app.use("/api/documents", documentsRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/ai", aiRoutes);
+app.use("/api/emails", emailsRoutes);
 
 // Error Handling Middleware
 app.use((err, req, res, next) => {

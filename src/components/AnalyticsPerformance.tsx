@@ -182,7 +182,7 @@ export default function AnalyticsPerformance({ leads, users }: AnalyticsPerforma
           <div className="flex justify-between items-start">
             <div>
               <p className="text-slate-500 text-[10px] font-bold uppercase tracking-wide">{t("analytics.kpi2")}</p>
-              <h3 className="text-2xl font-black text-slate-900 mt-1">{avgOpportunityValue.toLocaleString('fr-FR')} €</h3>
+              <h3 className="text-2xl font-black text-slate-900 mt-1">{avgOpportunityValue.toLocaleString('fr-FR')} MAD</h3>
             </div>
             <span className="p-2 bg-emerald-50 rounded-lg text-emerald-600">
               <DollarSign className="h-5 w-5" />
@@ -227,7 +227,7 @@ export default function AnalyticsPerformance({ leads, users }: AnalyticsPerforma
           <div className="flex justify-between items-start">
             <div>
               <p className="text-slate-500 text-[10px] font-bold uppercase tracking-wide">{t("analytics.kpi4")}</p>
-              <h3 className="text-2xl font-black text-blue-600 mt-1">{probabilisticPipelineValue.toLocaleString('fr-FR')} €</h3>
+              <h3 className="text-2xl font-black text-blue-600 mt-1">{probabilisticPipelineValue.toLocaleString('fr-FR')} MAD</h3>
             </div>
             <span className="p-2 bg-purple-50 rounded-lg text-purple-600">
               <ShieldCheck className="h-5 w-5" />
@@ -235,7 +235,7 @@ export default function AnalyticsPerformance({ leads, users }: AnalyticsPerforma
           </div>
           <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
             <span>{t("analytics.kpi4Nominal")}</span>
-            <span className="font-bold text-slate-700">{(activeLeads.reduce((acc, curr) => acc + curr.valeurEstimee, 0)).toLocaleString('fr-FR')} €</span>
+            <span className="font-bold text-slate-700">{(activeLeads.reduce((acc, curr) => acc + curr.valeurEstimee, 0)).toLocaleString('fr-FR')} MAD</span>
           </div>
         </div>
 
@@ -303,11 +303,11 @@ export default function AnalyticsPerformance({ leads, users }: AnalyticsPerforma
               <div className="grid grid-cols-2 gap-3 pt-2 text-xs">
                 <div className="bg-white p-2.5 rounded-lg border border-slate-150">
 <span className="text-slate-400 text-[10px] block uppercase font-bold">{t("analytics.simulator.activePipe")}</span>
-                  <span className="text-base font-black text-slate-900 mt-0.5">{estimatedSignValue.toLocaleString('fr-FR')} €</span>
+                  <span className="text-base font-black text-slate-900 mt-0.5">{estimatedSignValue.toLocaleString('fr-FR')} MAD</span>
                 </div>
                 <div className="bg-white p-2.5 rounded-lg border border-slate-150">
 <span className="text-slate-400 text-[10px] block uppercase font-bold">{t("analytics.simulator.estConversion")}</span>
-                  <span className="text-base font-black text-emerald-600 mt-0.5">{(Math.round(estimatedSignValue * 0.35)).toLocaleString('fr-FR')} €</span>
+                  <span className="text-base font-black text-emerald-600 mt-0.5">{(Math.round(estimatedSignValue * 0.35)).toLocaleString('fr-FR')} MAD</span>
                 </div>
               </div>
             </div>
@@ -366,9 +366,9 @@ export default function AnalyticsPerformance({ leads, users }: AnalyticsPerforma
                         {data.conversionRate} %
                       </span>
                     </td>
-                    <td className="py-3 text-right font-medium text-slate-600">{pipeVal.toLocaleString('fr-FR')} €</td>
-                    <td className="py-3 text-right font-bold text-slate-900">{data.revenue.toLocaleString('fr-FR')} €</td>
-                    <td className="py-3 text-right font-medium text-slate-500">{data.cost.toLocaleString('fr-FR')} €</td>
+                    <td className="py-3 text-right font-medium text-slate-600">{pipeVal.toLocaleString('fr-FR')} MAD</td>
+                    <td className="py-3 text-right font-bold text-slate-900">{data.revenue.toLocaleString('fr-FR')} MAD</td>
+                    <td className="py-3 text-right font-medium text-slate-500">{data.cost.toLocaleString('fr-FR')} MAD</td>
                     <td className={`py-3 text-right font-black ${data.roi >= 300 ? "text-emerald-600" : data.roi >= 0 ? "text-blue-600" : "text-rose-500"}`}>
                       {data.roi > 0 ? `+${data.roi}%` : `${data.roi}%`}
                     </td>

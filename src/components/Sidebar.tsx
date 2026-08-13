@@ -69,8 +69,7 @@ export default function Sidebar({
       items: [
         { id: "leads" as SidebarTab, labelKey: "nav.leads", icon: Users },
         { id: "opportunities" as SidebarTab, labelKey: "nav.opportunities", icon: KanbanSquare },
-        { id: "companies" as SidebarTab, labelKey: "nav.companies", icon: Building2 },
-        { id: "contacts" as SidebarTab, labelKey: "nav.contacts", icon: User }
+        { id: "companies" as SidebarTab, labelKey: "nav.companies", icon: Building2 }
       ]
     },
     {

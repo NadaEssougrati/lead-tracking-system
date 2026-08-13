@@ -1,6 +1,8 @@
 import express from "express";
 import prisma from "../lib/prisma.js";
 import { authenticate, allowRoles } from "../middleware/auth.js";
+import fs from "fs";
+import path from "path";
 
 const router = express.Router();
 
@@ -144,7 +146,8 @@ router.post("/tasks", async (req, res, next) => {
       dateEcheance: req.body.dateEcheance,
       leadId: req.body.leadId,
       utilisateurId: req.body.utilisateurId || req.user.id,
-      critique: req.body.critique || false
+      critique: req.body.critique || false,
+      type: req.body.type || 'other'
     };
 
     if (!taskData.titre || !taskData.dateEcheance || !taskData.leadId) {
@@ -258,6 +261,29 @@ router.patch("/notifications/:id/read", async (req, res, next) => {
   }
 });
 
+router.patch("/notifications/read-all", async (req, res, next) => {
+  try {
+    await prisma.notification.updateMany({
+      where: { utilisateurId: req.user.id, estLue: false },
+      data: { estLue: true }
+    });
+    res.json({ success: true, message: "Toutes les notifications ont été marquées comme lues." });
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.delete("/notifications", async (req, res, next) => {
+  try {
+    await prisma.notification.deleteMany({
+      where: { utilisateurId: req.user.id }
+    });
+    res.json({ success: true, message: "Notifications supprimées." });
+  } catch (e) {
+    next(e);
+  }
+});
+
 router.get("/companies", async (req, res, next) => {
   try {
     const companies = await prisma.entreprise.findMany({
@@ -283,6 +309,46 @@ router.patch("/companies/:id", allowRoles("Administrateur", "Manager", "AgentMar
   try {
     const company = await prisma.entreprise.update({ where: { id: req.params.id }, data: req.body });
     res.json({ success: true, data: company });
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.get("/system/settings", async (req, res, next) => {
+  try {
+    const configPath = path.resolve(process.cwd(), "src/lib/settings.json");
+    let settings = { sessionLength: "15m" };
+    if (fs.existsSync(configPath)) {
+      try {
+        settings = JSON.parse(fs.readFileSync(configPath, "utf-8"));
+      } catch (err) {
+        // ignore
+      }
+    }
+    res.json({ success: true, data: settings });
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.post("/system/settings", allowRoles("Administrateur"), async (req, res, next) => {
+  try {
+    const configPath = path.resolve(process.cwd(), "src/lib/settings.json");
+    let settings = { sessionLength: "15m" };
+    if (fs.existsSync(configPath)) {
+      try {
+        settings = JSON.parse(fs.readFileSync(configPath, "utf-8"));
+      } catch (err) {
+        // ignore
+      }
+    }
+    
+    if (req.body.sessionLength) {
+      settings.sessionLength = req.body.sessionLength;
+    }
+    
+    fs.writeFileSync(configPath, JSON.stringify(settings, null, 2), "utf-8");
+    res.json({ success: true, data: settings });
   } catch (e) {
     next(e);
   }

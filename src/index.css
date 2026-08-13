@@ -308,3 +308,26 @@ h1, h2, h3, h4, .font-display {
   animation: slideInRight 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
+/* Custom premium scrollbar for Kanban board */
+.kanban-scrollbar::-webkit-scrollbar {
+  height: 12px;
+}
+
+.kanban-scrollbar::-webkit-scrollbar-track {
+  background: rgba(148, 163, 184, 0.1);
+  border-radius: 9999px;
+}
+
+.dark .kanban-scrollbar::-webkit-scrollbar-track {
+  background: rgba(30, 41, 59, 0.5);
+}
+
+.kanban-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(59, 130, 246, 0.45);
+  border-radius: 9999px;
+}
+
+.kanban-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(59, 130, 246, 0.75);
+}
+

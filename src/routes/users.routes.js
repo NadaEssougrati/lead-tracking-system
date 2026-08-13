@@ -39,13 +39,23 @@ router.post("/", allowRoles("Administrateur"), async (req, res, next) => {
   }
 });
 
-router.patch("/:id", allowRoles("Administrateur"), async (req, res, next) => {
+router.patch("/:id", async (req, res, next) => {
   try {
-    const { motDePasse, ...data } = req.body;
-    if (motDePasse) data.motDePasse = await hashPassword(motDePasse);
+    if (req.user.id !== req.params.id && req.user.role !== 'Administrateur') {
+      return res.status(403).json({ success: false, message: 'Non autorisé.' });
+    }
+    const { motDePasse, role, actif, ...data } = req.body;
+    
+    let updateData = { ...data };
+    if (req.user.role === 'Administrateur') {
+      if (role) updateData.role = role;
+      if (actif !== undefined) updateData.actif = actif;
+      if (motDePasse) updateData.motDePasse = await hashPassword(motDePasse);
+    }
+    
     const user = await prisma.utilisateur.update({
       where: { id: req.params.id },
-      data
+      data: updateData
     });
     res.json({ success: true, data: safeUser(user) });
   } catch (e) {

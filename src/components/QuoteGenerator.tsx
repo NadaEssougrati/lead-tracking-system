@@ -167,10 +167,10 @@ export default function QuoteGenerator({
                       <div key={idx} className="flex items-center justify-between p-2 bg-white rounded border border-slate-150">
                         <div className="min-w-0 flex-1">
                           <p className="font-medium text-slate-750 truncate">{item.description}</p>
-                          <p className="text-[10px] text-slate-400">{item.quantite} x {item.prixUnitaire.toLocaleString('fr-FR')} €</p>
+                          <p className="text-[10px] text-slate-400">{item.quantite} x {item.prixUnitaire.toLocaleString('fr-FR')} MAD</p>
                         </div>
                         <div className="flex items-center gap-3">
-                          <span className="font-bold text-slate-850">{(item.quantite * item.prixUnitaire).toLocaleString('fr-FR')} €</span>
+                          <span className="font-bold text-slate-850">{(item.quantite * item.prixUnitaire).toLocaleString('fr-FR')} MAD</span>
                           <button
                             type="button"
                             onClick={() => handleDeleteLineItem(idx)}
@@ -272,7 +272,7 @@ export default function QuoteGenerator({
                     </div>
 
                     <div className="text-right">
-                      <p className="font-bold text-emerald-650">{q.montant.toLocaleString('fr-FR')} €</p>
+                      <p className="font-bold text-emerald-650">{q.montant.toLocaleString('fr-FR')} MAD</p>
                       <span className={`inline-block px-2 py-0.5 rounded text-[9px] font-bold mt-1 ${
                         q.statut === "Accepté" 
                           ? "bg-emerald-50 text-emerald-600 border border-emerald-200" 
@@ -366,9 +366,9 @@ export default function QuoteGenerator({
                         <tr key={i}>
                           <td className="py-3 font-medium">{item.description}</td>
                           <td className="py-3 text-center">{item.quantite}</td>
-                          <td className="py-3 text-right">{item.prixUnitaire.toLocaleString('fr-FR')} €</td>
+                          <td className="py-3 text-right">{item.prixUnitaire.toLocaleString('fr-FR')} MAD</td>
                           <td className="py-3 text-right font-bold text-slate-800">
-                            {(item.quantite * item.prixUnitaire).toLocaleString('fr-FR')} €
+                            {(item.quantite * item.prixUnitaire).toLocaleString('fr-FR')} MAD
                           </td>
                         </tr>
                       ))}
@@ -387,15 +387,15 @@ export default function QuoteGenerator({
                   <div className="text-right space-y-1.5 w-60 text-xs">
                     <div className="flex justify-between text-slate-500">
                       <span>Total Brut HT :</span>
-                      <span>{activeQuote.montant.toLocaleString('fr-FR')} €</span>
+                      <span>{activeQuote.montant.toLocaleString('fr-FR')} MAD</span>
                     </div>
                     <div className="flex justify-between text-slate-500">
                       <span>Remise (0%) :</span>
-                      <span>0,00 €</span>
+                      <span>0,00 MAD</span>
                     </div>
                     <div className="flex justify-between text-slate-700 border-t border-slate-100 pt-1.5 text-sm font-bold">
                       <span className="text-blue-600">MONTANT TOTAL NET :</span>
-                      <span className="text-blue-600">{activeQuote.montant.toLocaleString('fr-FR')} €</span>
+                      <span className="text-blue-600">{activeQuote.montant.toLocaleString('fr-FR')} MAD</span>
                     </div>
                   </div>
                 </div>

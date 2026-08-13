@@ -23,7 +23,7 @@ import {
   Pencil,
   X
 } from "lucide-react";
-import { Activity, Lead, ActivityType, User as UserType, LeadStatus, LeadPriority } from "../types";
+import { Activity, Lead, ActivityType, User as UserType, LeadStatus, LeadPriority, Task, TaskStatus, TaskType } from "../types";
 
 interface ActivitiesLogProps {
   activities: Activity[];
@@ -35,6 +35,8 @@ interface ActivitiesLogProps {
   onDeleteActivity?: (activityId: string) => void;
   onEditActivity?: (activityId: string, updates: Partial<Activity>) => void;
   defaultTypeFilter?: string;
+  tasks?: Task[];
+  onUpdateTaskStatus?: (taskId: string, status: TaskStatus) => void;
 }
 
 export default function ActivitiesLog({
@@ -46,7 +48,9 @@ export default function ActivitiesLog({
   onAddActivity,
   onDeleteActivity,
   onEditActivity,
-  defaultTypeFilter
+  defaultTypeFilter,
+  tasks = [],
+  onUpdateTaskStatus
 }: ActivitiesLogProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>(defaultTypeFilter || "all");
@@ -59,6 +63,12 @@ export default function ActivitiesLog({
   const [newDuree, setNewDuree] = useState(15);
   const [newDesc, setNewDesc] = useState("");
   const [feedback, setFeedback] = useState<string | null>(null);
+
+  const showTaskList = defaultTypeFilter === ActivityType.CALL || defaultTypeFilter === ActivityType.MEETING;
+  const targetTaskType = defaultTypeFilter === ActivityType.CALL ? TaskType.CALL : TaskType.MEETING;
+  const pendingTypeTasks = showTaskList 
+    ? tasks.filter(t => t.type === targetTaskType && t.statut !== TaskStatus.DONE)
+    : [];
 
   useEffect(() => {
     if (defaultTypeFilter) {
@@ -205,47 +215,49 @@ export default function ActivitiesLog({
     <div className="flex-1 bg-slate-50 p-6 overflow-y-auto max-h-screen text-slate-850 dark:bg-slate-950" id="activities-log-root">
       <div className="max-w-7xl mx-auto w-full space-y-6">
       
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <div className="bg-white border border-slate-200 p-4 rounded-xl flex items-center justify-between shadow-sm">
-          <div>
-            <p className="text-[10px] uppercase font-semibold text-slate-400 tracking-wider">Total des Échanges</p>
-            <h3 className="text-2xl font-bold font-display text-slate-900 mt-1">{totalExchanges}</h3>
+      {!defaultTypeFilter && (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+          <div className="bg-white border border-slate-200 p-4 rounded-xl flex items-center justify-between shadow-sm">
+            <div>
+              <p className="text-[10px] uppercase font-semibold text-slate-400 tracking-wider">Total des Échanges</p>
+              <h3 className="text-2xl font-bold font-display text-slate-900 mt-1">{totalExchanges}</h3>
+            </div>
+            <div className="h-10 w-10 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 border border-blue-100">
+              <Clock className="h-5 w-5" />
+            </div>
           </div>
-          <div className="h-10 w-10 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 border border-blue-100">
-            <Clock className="h-5 w-5" />
-          </div>
-        </div>
 
-        <div className="bg-white border border-slate-200 p-4 rounded-xl flex items-center justify-between shadow-sm">
-          <div>
-            <p className="text-[10px] uppercase font-semibold text-slate-400 tracking-wider">Appels Effectués</p>
-            <h3 className="text-2xl font-bold font-display text-amber-600 mt-1">{callsCount}</h3>
+          <div className="bg-white border border-slate-200 p-4 rounded-xl flex items-center justify-between shadow-sm">
+            <div>
+              <p className="text-[10px] uppercase font-semibold text-slate-400 tracking-wider">Appels Effectués</p>
+              <h3 className="text-2xl font-bold font-display text-amber-600 mt-1">{callsCount}</h3>
+            </div>
+            <div className="h-10 w-10 rounded-lg bg-amber-50 flex items-center justify-center text-amber-600 border border-amber-100">
+              <Phone className="h-5 w-5" />
+            </div>
           </div>
-          <div className="h-10 w-10 rounded-lg bg-amber-50 flex items-center justify-center text-amber-600 border border-amber-100">
-            <Phone className="h-5 w-5" />
-          </div>
-        </div>
 
-        <div className="bg-white border border-slate-200 p-4 rounded-xl flex items-center justify-between shadow-sm">
-          <div>
-            <p className="text-[10px] uppercase font-semibold text-slate-400 tracking-wider">Emails Échangés</p>
-            <h3 className="text-2xl font-bold font-display text-blue-600 mt-1">{emailsCount}</h3>
+          <div className="bg-white border border-slate-200 p-4 rounded-xl flex items-center justify-between shadow-sm">
+            <div>
+              <p className="text-[10px] uppercase font-semibold text-slate-400 tracking-wider">Emails Échangés</p>
+              <h3 className="text-2xl font-bold font-display text-blue-600 mt-1">{emailsCount}</h3>
+            </div>
+            <div className="h-10 w-10 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 border border-blue-100">
+              <Mail className="h-5 w-5" />
+            </div>
           </div>
-          <div className="h-10 w-10 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 border border-blue-100">
-            <Mail className="h-5 w-5" />
-          </div>
-        </div>
 
-        <div className="bg-white border border-slate-200 p-4 rounded-xl flex items-center justify-between shadow-sm">
-          <div>
-            <p className="text-[10px] uppercase font-semibold text-slate-400 tracking-wider">Réunions & RDV</p>
-            <h3 className="text-2xl font-bold font-display text-purple-600 mt-1">{meetingsCount}</h3>
-          </div>
-          <div className="h-10 w-10 rounded-lg bg-purple-50 flex items-center justify-center text-purple-600 border border-purple-100">
-            <Calendar className="h-5 w-5" />
+          <div className="bg-white border border-slate-200 p-4 rounded-xl flex items-center justify-between shadow-sm">
+            <div>
+              <p className="text-[10px] uppercase font-semibold text-slate-400 tracking-wider">Réunions & RDV</p>
+              <h3 className="text-2xl font-bold font-display text-purple-600 mt-1">{meetingsCount}</h3>
+            </div>
+            <div className="h-10 w-10 rounded-lg bg-purple-50 flex items-center justify-center text-purple-600 border border-purple-100">
+              <Calendar className="h-5 w-5" />
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {feedback && (
         <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 p-4 rounded-xl mb-6 flex items-center gap-3 text-xs font-semibold shadow-xs">
@@ -257,6 +269,47 @@ export default function ActivitiesLog({
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         <div className="lg:col-span-1 space-y-6">
+          {/* Scheduled Tasks for this Type */}
+          {pendingTypeTasks.length > 0 && (
+            <div className="bg-white border border-slate-200 p-5 rounded-xl text-xs shadow-sm space-y-3 dark:bg-slate-900 dark:border-slate-800 animate-fade-in animate-fade-in">
+              <h3 className="font-bold text-sm text-slate-800 dark:text-white pb-2 border-b border-slate-100 dark:border-slate-800 flex items-center gap-2">
+                <Calendar className="h-4.5 w-4.5 text-blue-600 animate-pulse" />
+                Tâches planifiées (À faire)
+              </h3>
+              
+              <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                {pendingTypeTasks.map(t => {
+                  const leadObj = leads.find(l => l.id === t.leadId);
+                  return (
+                    <div key={t.id} className="border border-slate-150 rounded-lg p-3 dark:border-slate-800 hover:border-blue-500/50 transition-all flex flex-col justify-between gap-2">
+                      <div>
+                        <div className="flex justify-between items-start gap-2">
+                          <span className="font-bold text-slate-800 dark:text-slate-205 leading-tight">{t.titre}</span>
+                          {t.critique && (
+                            <span className="px-1.5 py-0.5 rounded text-[8px] font-extrabold bg-rose-50 text-rose-700 border border-rose-150 uppercase dark:bg-rose-950/20 dark:text-rose-400 dark:border-rose-900">Urgente</span>
+                          )}
+                        </div>
+                        <p className="text-[10px] text-slate-400 mt-1 dark:text-slate-500">
+                          Pour : {leadObj ? `${leadObj.prenom} ${leadObj.nom} (${leadObj.societe})` : "Client inconnu"}
+                        </p>
+                      </div>
+                      
+                      <div className="flex justify-between items-center text-[10px] border-t border-slate-50 pt-2 dark:border-slate-850">
+                        <span className="text-slate-400">Échéance : {t.dateEcheance}</span>
+                        <button
+                          onClick={() => onUpdateTaskStatus?.(t.id, TaskStatus.DONE)}
+                          className="px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold rounded-md transition-colors border border-emerald-150 cursor-pointer dark:bg-emerald-950/20 dark:text-emerald-450 dark:border-emerald-900"
+                        >
+                          Marquer fait
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           <div className="bg-white border border-slate-200 p-5 rounded-xl text-xs shadow-sm">
             <h3 className="font-bold text-sm text-slate-800 mb-4 pb-2 border-b border-slate-100 flex items-center gap-2">
               <PlusCircle className="h-4.5 w-4.5 text-blue-600" />

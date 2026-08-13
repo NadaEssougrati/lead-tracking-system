@@ -90,6 +90,11 @@ model Utilisateur {
   taches        Tache[]
   notifications Notification[]
   historiques   Historique[]
+  smtpHost      String?
+  smtpPort      Int?
+  smtpUser      String?
+  smtpPass      String?
+  emails        Email[]
 }
 
 model Entreprise {
@@ -121,6 +126,7 @@ model Lead {
   dateCreation      DateTime        @default(now())
   derniereActivite  DateTime?
   notes             String?
+  nomProjet         String?         @default("Nouveau projet")
   entrepriseId      String?         @db.Uuid
   commercialId      String?         @db.Uuid
   entreprise        Entreprise?     @relation(fields: [entrepriseId], references: [id], onDelete: SetNull)
@@ -132,6 +138,7 @@ model Lead {
   historiques       Historique[]
   documents         DocumentJoint[]
   analysesIA        AssistantIA[]
+  emails            Email[]
 
   @@index([statut])
   @@index([commercialId])
@@ -167,6 +174,7 @@ model Tache {
   description   String?
   statut        StatutTache @default(AFaire)
   critique      Boolean     @default(false)
+  type          String      @default("other")
   dateEcheance  DateTime
   dateCreation  DateTime    @default(now())
   leadId        String      @db.Uuid
@@ -235,4 +243,21 @@ model AssistantIA {
   lead                  Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
 
   @@index([leadId, dateGeneration])
+}
+
+model Email {
+  id            String       @id @default(uuid()) @db.Uuid
+  sujet         String
+  corps         String
+  dateCreation  DateTime     @default(now())
+  direction     String       // "SENT" or "RECEIVED"
+  expediteur    String       // Sender email address
+  destinataire  String       // Recipient email address
+  auteurNom     String?      // Name of the user who sent it
+  leadId        String       @db.Uuid
+  utilisateurId String?      @db.Uuid // Optional sender user
+  lead          Lead         @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  utilisateur   Utilisateur? @relation(fields: [utilisateurId], references: [id], onDelete: SetNull)
+
+  @@index([leadId])
 }

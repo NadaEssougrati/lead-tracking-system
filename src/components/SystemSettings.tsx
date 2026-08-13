@@ -14,73 +14,101 @@ import {
   Play
 } from "lucide-react";
 import { usePreferences } from "../AppPreferences";
-import { getEmailConfig, saveEmailConfig, testEmailConfig } from "../api";
+import { getEmailConfig, saveEmailConfig, testEmailConfig, api } from "../api";
 
 export default function SystemSettings() {
   const { t } = usePreferences();
   
-  // SMTP Config state
-  const [gmailUser, setGmailUser] = useState("");
-  const [gmailPass, setGmailPass] = useState("");
-  const [hasPassword, setHasPassword] = useState(false);
-  const [smtpFeedback, setSmtpFeedback] = useState<{ type: "success" | "error"; msg: string } | null>(null);
-  const [isSavingSmtp, setIsSavingSmtp] = useState(false);
-  const [isTestingSmtp, setIsTestingSmtp] = useState(false);
+  // Email System Settings state
+  const [emailProvider, setEmailProvider] = useState<"resend" | "smtp">("smtp");
+  const [resendApiKey, setResendApiKey] = useState("");
+  const [resendFromEmail, setResendFromEmail] = useState("");
+  const [hasResendApiKey, setHasResendApiKey] = useState(false);
+  const [emailFeedback, setEmailFeedback] = useState<{ type: "success" | "error"; msg: string } | null>(null);
+  const [isSavingEmailConfig, setIsSavingEmailConfig] = useState(false);
+  const [isTestingEmailConfig, setIsTestingEmailConfig] = useState(false);
 
   // Business Rules state (persisted locally)
   const [inactivityDelay, setInactivityDelay] = useState(() => localStorage.getItem("sys_inactivity_delay") || "14");
   const [minConfidence, setMinConfidence] = useState(() => localStorage.getItem("sys_min_confidence") || "65");
   const [rulesFeedback, setRulesFeedback] = useState<string | null>(null);
 
-  // Load SMTP configurations on mount
+  // Session Settings state (persisted server-side)
+  const [sessionLength, setSessionLength] = useState("15m");
+  const [isSavingSession, setIsSavingSession] = useState(false);
+  const [sessionFeedback, setSessionFeedback] = useState<string | null>(null);
+
+  // Load Configurations on mount
   useEffect(() => {
     getEmailConfig()
       .then((res) => {
-        setGmailUser(res.gmailUser || "");
-        setHasPassword(res.hasPassword || false);
+        if (res) {
+          setEmailProvider(res.emailProvider || "smtp");
+          setResendFromEmail(res.resendFromEmail || "");
+          setHasResendApiKey(res.hasResendApiKey || false);
+        }
       })
       .catch((err) => {
-        console.error("Failed to load SMTP configuration:", err);
+        console.error("Failed to load email system settings:", err);
+      });
+
+    // Load Session configuration
+    api<{ sessionLength: string }>("/system/settings")
+      .then((res) => {
+        if (res && res.sessionLength) {
+          setSessionLength(res.sessionLength);
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to load session settings:", err);
       });
   }, []);
 
-  const handleSaveSmtp = async () => {
-    setSmtpFeedback(null);
-    if (!gmailUser) {
-      setSmtpFeedback({ type: "error", msg: "L'adresse Gmail est requise." });
+  const handleSaveEmailConfig = async () => {
+    setEmailFeedback(null);
+    if (emailProvider === "resend" && !resendFromEmail) {
+      setEmailFeedback({ type: "error", msg: "L'adresse d'expédition Resend est requise." });
       return;
     }
-    setIsSavingSmtp(true);
+    setIsSavingEmailConfig(true);
     try {
-      const res = await saveEmailConfig({ gmailUser, gmailPass });
+      const res = await saveEmailConfig({
+        emailProvider,
+        resendFromEmail,
+        ...(resendApiKey ? { resendApiKey } : {})
+      });
       if (res.success) {
-        setHasPassword(res.data.hasPassword);
-        setGmailPass("");
-        setSmtpFeedback({ type: "success", msg: "Configuration SMTP enregistrée avec succès !" });
+        setHasResendApiKey(res.data.hasResendApiKey);
+        setResendApiKey("");
+        setEmailFeedback({ type: "success", msg: "Configuration e-mail système enregistrée avec succès !" });
       } else {
-        setSmtpFeedback({ type: "error", msg: res.message || "Erreur de configuration." });
+        setEmailFeedback({ type: "error", msg: "Erreur de configuration." });
       }
     } catch (err: any) {
-      setSmtpFeedback({ type: "error", msg: err.message || "Erreur lors de la sauvegarde." });
+      setEmailFeedback({ type: "error", msg: err.message || "Erreur lors de la sauvegarde." });
     } finally {
-      setIsSavingSmtp(false);
+      setIsSavingEmailConfig(false);
     }
   };
 
-  const handleTestSmtp = async () => {
-    setSmtpFeedback(null);
-    setIsTestingSmtp(true);
+  const handleTestEmailConfig = async () => {
+    setEmailFeedback(null);
+    setIsTestingEmailConfig(true);
     try {
-      const res = await testEmailConfig();
-      if (res.success) {
-        setSmtpFeedback({ type: "success", msg: "Connexion SMTP réussie ! Le serveur est prêt." });
+      const res = await testEmailConfig({
+        emailProvider,
+        resendFromEmail,
+        ...(resendApiKey ? { resendApiKey } : {})
+      });
+      if (res && res.success) {
+        setEmailFeedback({ type: "success", msg: res.message || "Test de connexion réussi !" });
       } else {
-        setSmtpFeedback({ type: "error", msg: res.message || "La connexion de test a échoué." });
+        setEmailFeedback({ type: "error", msg: res ? res.message : "Le test de connexion a échoué." });
       }
     } catch (err: any) {
-      setSmtpFeedback({ type: "error", msg: err.message || "Erreur de communication lors du test SMTP." });
+      setEmailFeedback({ type: "error", msg: err.message || "Erreur lors du test de connexion." });
     } finally {
-      setIsTestingSmtp(false);
+      setIsTestingEmailConfig(false);
     }
   };
 
@@ -91,82 +119,124 @@ export default function SystemSettings() {
     setTimeout(() => setRulesFeedback(null), 3000);
   };
 
+  const handleSaveSession = async () => {
+    setIsSavingSession(true);
+    setSessionFeedback(null);
+    try {
+      const res = await api<{ sessionLength: string }>("/system/settings", {
+        method: "POST",
+        body: JSON.stringify({ sessionLength }),
+      });
+      if (res && res.sessionLength) {
+        setSessionFeedback("Durée de session mise à jour avec succès ! Les nouveaux jetons prendront cette durée.");
+      } else {
+        setSessionFeedback("Erreur lors de l'enregistrement de la session.");
+      }
+    } catch (err: any) {
+      setSessionFeedback(err.message || "Erreur de communication.");
+    } finally {
+      setIsSavingSession(false);
+      setTimeout(() => setSessionFeedback(null), 4000);
+    }
+  };
+
   return (
     <div className="flex-1 bg-slate-50 p-6 overflow-y-auto max-h-screen text-slate-850 dark:bg-slate-950" id="system-settings-root">
       <div className="max-w-7xl mx-auto w-full">
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-          {/* SMTP Configuration Card */}
+          {/* Email System Configuration Card */}
           <div className="bg-white border border-slate-200 p-6 rounded-xl shadow-sm dark:bg-slate-900 dark:border-slate-800">
             <div className="flex items-center gap-3 mb-5">
               <div className="h-11 w-11 rounded-xl bg-blue-50 text-blue-600 grid place-items-center dark:bg-blue-900/20 dark:text-blue-400">
                 <Mail className="h-5 w-5" />
               </div>
               <div>
-                <p className="text-slate-850 font-bold text-sm dark:text-white">{t("settings.smtp.title")}</p>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400">{t("settings.smtp.subtitle")}</p>
+                <p className="text-slate-850 font-bold text-sm dark:text-white">Configuration Messagerie CRM</p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">Définissez le fournisseur d'envoi de courriels (Resend ou SMTP individuel).</p>
               </div>
             </div>
 
             <div className="space-y-4 text-xs">
               <div>
-                <label className="block text-slate-500 dark:text-slate-400 uppercase tracking-[0.15em] text-[9px] mb-1">{t("settings.smtp.user")}</label>
-                <input
-                  type="email"
-                  value={gmailUser}
-                  onChange={(e) => setGmailUser(e.target.value)}
-                  placeholder="exemple@gmail.com"
-                  className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-850 dark:border-slate-700 dark:text-white"
-                />
+                <label className="block text-slate-500 dark:text-slate-400 uppercase tracking-[0.15em] text-[9px] mb-1.5 font-bold">Méthode d'envoi active :</label>
+                <select
+                  value={emailProvider}
+                  onChange={(e) => {
+                    setEmailProvider(e.target.value as "resend" | "smtp");
+                    setEmailFeedback(null);
+                  }}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-semibold focus:outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-white cursor-pointer"
+                >
+                  <option value="smtp">Identifiants SMTP Individuels par Commercial</option>
+                  <option value="resend">API Resend Globale (Envoyeur unique)</option>
+                </select>
               </div>
-              <div>
-                <label className="block text-slate-500 dark:text-slate-400 uppercase tracking-[0.15em] text-[9px] mb-1">
-                  {t("settings.smtp.pass")}
-                </label>
-                <input
-                  type="password"
-                  value={gmailPass}
-                  onChange={(e) => setGmailPass(e.target.value)}
-                  placeholder={hasPassword ? "••••••••••••••••" : "Saisir votre mot de passe d'application"}
-                  className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-850 dark:border-slate-700 dark:text-white"
-                />
-                {hasPassword && (
-                  <p className="text-[10px] text-emerald-600 dark:text-emerald-400 mt-1 flex items-center gap-1 font-medium">
-                    <CheckCircle2 className="h-3 w-3" /> {t("settings.smtp.hasPassword")}
-                  </p>
-                )}
-              </div>
+
+              {emailProvider === "resend" ? (
+                <>
+                  <div>
+                    <label className="block text-slate-500 dark:text-slate-400 uppercase tracking-[0.15em] text-[9px] mb-1">Clé API Resend</label>
+                    <input
+                      type="password"
+                      value={resendApiKey}
+                      onChange={(e) => setResendApiKey(e.target.value)}
+                      placeholder={hasResendApiKey ? "••••••••••••••••••••••••••••••••" : "re_..."}
+                      className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-850 dark:border-slate-700 dark:text-white font-medium"
+                    />
+                    {hasResendApiKey && (
+                      <p className="text-[10px] text-emerald-600 dark:text-emerald-400 mt-1 flex items-center gap-1 font-semibold">
+                        <CheckCircle2 className="h-3 w-3" /> Une clé API est déjà configurée.
+                      </p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-slate-500 dark:text-slate-400 uppercase tracking-[0.15em] text-[9px] mb-1">Email d'expédition (From)</label>
+                    <input
+                      type="email"
+                      value={resendFromEmail}
+                      onChange={(e) => setResendFromEmail(e.target.value)}
+                      placeholder="onboarding@resend.dev"
+                      className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-850 dark:border-slate-700 dark:text-white font-medium"
+                    />
+                  </div>
+                </>
+              ) : (
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-[11px] text-slate-500 dark:bg-slate-850 dark:border-slate-750 dark:text-slate-400 leading-relaxed font-medium">
+                  💡 Le mode **SMTP Individuel** est actif. Les collaborateurs doivent saisir leurs propres identifiants de messagerie (adresse d'expédition, serveur, mot de passe d'application) dans leur fiche de profil (Paramètres du Compte) pour pouvoir envoyer des e-mails.
+                </div>
+              )}
 
               <div className="flex gap-3 pt-2">
                 <button
                   type="button"
-                  onClick={handleSaveSmtp}
-                  disabled={isSavingSmtp}
+                  onClick={handleSaveEmailConfig}
+                  disabled={isSavingEmailConfig}
                   className="flex-1 rounded-lg bg-blue-600 px-4 py-2.5 text-white font-semibold text-sm hover:bg-blue-500 transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                 >
                   <Save className="h-4 w-4" />
-                  {isSavingSmtp ? "Enregistrement..." : t("settings.smtp.save")}
+                  {isSavingEmailConfig ? "Enregistrement..." : "Appliquer"}
                 </button>
                 <button
                   type="button"
-                  onClick={handleTestSmtp}
-                  disabled={isTestingSmtp}
+                  onClick={handleTestEmailConfig}
+                  disabled={isTestingEmailConfig}
                   className="rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-slate-700 font-semibold text-sm hover:bg-slate-50 dark:bg-slate-800 dark:border-slate-700 dark:text-white dark:hover:bg-slate-700 transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                 >
                   <Play className="h-3.5 w-3.5 fill-current" />
-                  {isTestingSmtp ? "Test..." : t("settings.smtp.test")}
+                  {isTestingEmailConfig ? "Test..." : "Tester la connexion"}
                 </button>
               </div>
 
-              {smtpFeedback && (
+              {emailFeedback && (
                 <div className={`p-3 rounded-xl border text-[11px] flex items-center gap-2 ${
-                  smtpFeedback.type === "success" 
+                  emailFeedback.type === "success" 
                     ? "bg-emerald-50 border-emerald-100 text-emerald-700 dark:bg-emerald-950/20 dark:border-emerald-900/30 dark:text-emerald-400" 
                     : "bg-rose-50 border-rose-100 text-rose-700 dark:bg-rose-950/20 dark:border-rose-900/30 dark:text-rose-450"
                 }`}>
-                  {smtpFeedback.type === "success" ? <CheckCircle2 className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
-                  <span>{smtpFeedback.msg}</span>
+                  {emailFeedback.type === "success" ? <CheckCircle2 className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
+                  <span>{emailFeedback.msg}</span>
                 </div>
               )}
             </div>
@@ -230,6 +300,56 @@ export default function SystemSettings() {
                 <div className="p-3 bg-emerald-50 border border-emerald-100 text-emerald-700 rounded-xl text-[11px] flex items-center gap-2 dark:bg-emerald-950/20 dark:border-emerald-900/30 dark:text-emerald-400">
                   <CheckCircle2 className="h-4 w-4" />
                   <span>{rulesFeedback}</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Session Length Configuration Card */}
+          <div className="bg-white border border-slate-200 p-5 rounded-xl shadow-sm dark:bg-slate-900 dark:border-slate-800 space-y-6 animate-fade-in">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-blue-50 text-blue-600 rounded-lg dark:bg-slate-800 dark:text-blue-400">
+                <ShieldAlert className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-slate-850 font-bold text-sm dark:text-white">Paramètres de Sécurité & Session</p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">Configurez la politique d'expiration des jetons de connexion.</p>
+              </div>
+            </div>
+
+            <div className="space-y-4 text-xs">
+              <div>
+                <label className="block text-slate-500 dark:text-slate-400 uppercase tracking-[0.15em] text-[9px] mb-1.5 font-bold">Durée d'expiration de la session :</label>
+                <select
+                  value={sessionLength}
+                  onChange={(e) => setSessionLength(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-slate-800 cursor-pointer text-xs focus:bg-white focus:outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-white"
+                >
+                  <option value="15m">15 Minutes (Défaut, sécurisé)</option>
+                  <option value="1h">1 Heure</option>
+                  <option value="8h">8 Heures (Journée de travail)</option>
+                  <option value="24h">24 Heures</option>
+                  <option value="7d">7 Jours</option>
+                  <option value="30d">30 Jours</option>
+                </select>
+              </div>
+
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={handleSaveSession}
+                  disabled={isSavingSession}
+                  className="w-full rounded-lg bg-blue-600 px-4 py-2.5 text-white font-semibold text-sm hover:bg-blue-500 transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-40"
+                >
+                  <Save className="h-4 w-4" />
+                  {isSavingSession ? "Enregistrement..." : "Sauvegarder la durée"}
+                </button>
+              </div>
+
+              {sessionFeedback && (
+                <div className="p-3 bg-emerald-50 border border-emerald-100 text-emerald-700 rounded-xl text-[11px] flex items-center gap-2 dark:bg-emerald-950/20 dark:border-emerald-900/30 dark:text-emerald-400">
+                  <CheckCircle2 className="h-4 w-4" />
+                  <span>{sessionFeedback}</span>
                 </div>
               )}
             </div>

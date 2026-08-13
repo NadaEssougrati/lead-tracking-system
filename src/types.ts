@@ -42,6 +42,13 @@ export enum TaskStatus {
   DONE = "Terminée",
 }
 
+export enum TaskType {
+  CALL = "call",
+  EMAIL = "email",
+  MEETING = "meeting",
+  OTHER = "other"
+}
+
 export enum ActivityType {
   CALL = "Appel",
   EMAIL = "Email",
@@ -59,6 +66,10 @@ export interface User {
   telephone: string;
   avatar?: string;
   actif: boolean;
+  smtpHost?: string;
+  smtpPort?: number;
+  smtpUser?: string;
+  smtpPass?: string;
 }
 
 export interface Activity {
@@ -81,6 +92,7 @@ export interface Task {
   assigneA: string; // user ID or name
   utilisateurId?: string;
   critique: boolean;
+  type: TaskType;
 }
 
 export interface Document {
@@ -110,6 +122,7 @@ export interface Lead {
   dateCreation: string;
   derniereActivite: string;
   notes: string;
+  nomProjet?: string;
   documents: Document[];
 }
 
