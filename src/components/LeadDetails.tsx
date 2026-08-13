@@ -107,6 +107,7 @@ interface LeadDetailsProps {
   leads?: Lead[];
   onSelectLead?: (id: string) => void;
   onAddLead?: (lead: Omit<Lead, "id" | "dateCreation" | "derniereActivite" | "documents" | "score">) => void;
+  readOnly?: boolean;
 }
 
 const STEPS = [
@@ -136,7 +137,8 @@ export default function LeadDetails({
   onTriggerQuote,
   leads = [],
   onSelectLead = () => {},
-  onAddLead = () => {}
+  onAddLead = () => {},
+  readOnly = false,
 }: LeadDetailsProps) {
   const { t } = usePreferences();
 
@@ -607,15 +609,9 @@ export default function LeadDetails({
   // Enforce RBAC for delete and status change
   const canDeleteLead = activeUser.role === Role.ADMIN || activeUser.role === Role.MANAGER;
 
-  // Enforce status change rules for Marketing
+  // Enforce status change rules — blocked entirely in readOnly mode
   const handleStatusChange = async (newStatus: LeadStatus) => {
-    if (activeUser.role === Role.MARKETING) {
-      const allowed = (lead.statut === LeadStatus.NEW && (newStatus === LeadStatus.QUALIFIED || newStatus === LeadStatus.CONTACTED));
-      if (!allowed) {
-        alert("En tant qu'Agent Marketing, vous pouvez uniquement qualifier un prospect 'Nouveau' vers 'Qualifié' ou 'Premier Contact'.");
-        return;
-      }
-    }
+    if (readOnly) return;
     
     // Log the status change activity
     onAddActivity({
@@ -635,6 +631,7 @@ export default function LeadDetails({
     // Trigger AI re-evaluation
     setTimeout(() => runAiAnalysis(true), 500);
   };
+
 
   // Handle Simulated document drag & drop / upload
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1084,7 +1081,7 @@ export default function LeadDetails({
                 {t("lead.title.leads")}
               </h2>
             </div>
-            {activeUser.role !== Role.COMMERCIAL && (
+            {!readOnly && (
               <button
                 onClick={() => setShowCreateModal(true)}
                 className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2.5 rounded-lg text-xs font-bold transition-all shadow-md shadow-blue-500/10 cursor-pointer flex-shrink-0"
@@ -1319,7 +1316,8 @@ export default function LeadDetails({
                 <div key={step} className="flex items-center">
                   <button
                     onClick={() => handleStatusChange(step)}
-                    className={`px-3 py-1 text-xs rounded-full font-semibold transition-all duration-150 ${
+                    disabled={readOnly}
+                    className={`px-3 py-1 text-xs rounded-full font-semibold transition-all duration-150 ${readOnly ? "cursor-default opacity-80" : "cursor-pointer"} ${
                       isCurrent
                         ? "bg-blue-600 text-white shadow-md shadow-blue-500/10"
                         : isPast
@@ -1339,41 +1337,45 @@ export default function LeadDetails({
         </div>
       </div>
 
+
       {/* Main Action Bar */}
       <div className="bg-white border border-slate-200 p-4 rounded-xl mb-6 flex items-center justify-between flex-wrap gap-4 shadow-sm">
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setShowLogModal("call")}
-            className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 px-3.5 py-2 rounded-lg text-xs font-semibold border border-slate-200 transition-colors"
-          >
-            <Phone className="h-4 w-4 text-blue-600" />
-            Appel
-          </button>
-          <button
-            onClick={() => setShowLogModal("email")}
-            className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 px-3.5 py-2 rounded-lg text-xs font-semibold border border-slate-200 transition-colors"
-          >
-            <Mail className="h-4 w-4 text-amber-600" />
-            Email
-</button>
-          <button
-            onClick={() => setShowLogModal("meeting")}
-            className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 px-3.5 py-2 rounded-lg text-xs font-semibold border border-slate-200 transition-colors"
-          >
-            <Calendar className="h-4 w-4 text-purple-600" />
-            Rendez-vous
-          </button>
-          <button
-            onClick={() => setShowLogModal("task")}
-            className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 px-3.5 py-2 rounded-lg text-xs font-semibold border border-slate-200 transition-colors"
-          >
-            <Plus className="h-4 w-4 text-pink-600" />
-            Tâche
-          </button>
-        </div>
+        {!readOnly && (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowLogModal("call")}
+              className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 px-3.5 py-2 rounded-lg text-xs font-semibold border border-slate-200 transition-colors"
+            >
+              <Phone className="h-4 w-4 text-blue-600" />
+              Appel
+            </button>
+            <button
+              onClick={() => setShowLogModal("email")}
+              className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 px-3.5 py-2 rounded-lg text-xs font-semibold border border-slate-200 transition-colors"
+            >
+              <Mail className="h-4 w-4 text-amber-600" />
+              Email
+            </button>
+            <button
+              onClick={() => setShowLogModal("meeting")}
+              className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 px-3.5 py-2 rounded-lg text-xs font-semibold border border-slate-200 transition-colors"
+            >
+              <Calendar className="h-4 w-4 text-purple-600" />
+              Rendez-vous
+            </button>
+            <button
+              onClick={() => setShowLogModal("task")}
+              className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 px-3.5 py-2 rounded-lg text-xs font-semibold border border-slate-200 transition-colors"
+            >
+              <Plus className="h-4 w-4 text-pink-600" />
+              Tâche
+            </button>
+          </div>
+        )}
+        {readOnly && <div />}
 
         {/* Generate Quote / Devis Button */}
-<div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap">
             {activeUser.role !== Role.MARKETING && (
               <button
                 onClick={() => onTriggerQuote(lead.id)}
@@ -1385,28 +1387,31 @@ export default function LeadDetails({
               </button>
             )}
 
-            <div className="flex items-center gap-2 flex-wrap">
-              <button
-                onClick={handleOpenEditLead}
-                className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-lg text-xs font-bold transition-all border border-slate-200"
-                title="Modifier ce lead"
-              >
-                <Pencil className="h-4 w-4" />
-                Modifier le lead
-              </button>
-              {canDeleteLead && onDeleteLead && (
+            {!readOnly && (
+              <div className="flex items-center gap-2 flex-wrap">
                 <button
-                  onClick={() => onDeleteLead(lead.id)}
-                  className="flex items-center gap-2 bg-rose-50 hover:bg-rose-100 text-rose-700 px-4 py-2 rounded-lg text-xs font-bold transition-all border border-rose-200"
-                  title="Supprimer ce lead"
+                  onClick={handleOpenEditLead}
+                  className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-lg text-xs font-bold transition-all border border-slate-200"
+                  title="Modifier ce lead"
                 >
-                  <Trash2 className="h-4 w-4" />
-                  Supprimer le lead
+                  <Pencil className="h-4 w-4" />
+                  Modifier le lead
                 </button>
-              )}
-            </div>
+                {canDeleteLead && onDeleteLead && (
+                  <button
+                    onClick={() => onDeleteLead(lead.id)}
+                    className="flex items-center gap-2 bg-rose-50 hover:bg-rose-100 text-rose-700 px-4 py-2 rounded-lg text-xs font-bold transition-all border border-rose-200"
+                    title="Supprimer ce lead"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Supprimer le lead
+                  </button>
+                )}
+              </div>
+            )}
           </div>
       </div>
+
 
       {/* Grid: Details (Left Column) vs AI Panel (Right Column) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

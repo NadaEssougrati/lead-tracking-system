@@ -103,10 +103,10 @@ export default function Sidebar({
     return sections.map(section => {
       const filteredItems = section.items.filter(item => {
         if (item.id === "settings") {
-          return true; // Available to all users!
+          return true; // Available to all users
         }
         if (item.id === "system_settings") {
-          return activeUser.role === Role.ADMIN; // Restricted to admin only
+          return activeUser.role === Role.ADMIN;
         }
         if (item.id === "team") {
           return activeUser.role === Role.ADMIN || activeUser.role === Role.MANAGER;
@@ -115,10 +115,12 @@ export default function Sidebar({
           return activeUser.role !== Role.MARKETING;
         }
         if (item.id === "dashboards_analysis") {
-          return activeUser.role === Role.ADMIN || activeUser.role === Role.MANAGER;
+          // Admin, Manager, and Marketing can see analytics
+          return activeUser.role === Role.ADMIN || activeUser.role === Role.MANAGER || activeUser.role === Role.MARKETING;
         }
         if (activeUser.role === Role.MARKETING) {
-          if (["opportunities", "tasks", "calls", "emails", "meetings"].includes(item.id)) {
+          // Marketing can see leads and opportunities (read-only), but not activities
+          if (["tasks", "calls", "emails", "meetings"].includes(item.id)) {
             return false;
           }
         }
@@ -127,6 +129,7 @@ export default function Sidebar({
       return { ...section, items: filteredItems };
     }).filter(section => section.items.length > 0);
   };
+
 
   const filteredSections = getFilteredSections();
 

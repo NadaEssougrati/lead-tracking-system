@@ -441,18 +441,15 @@ export default function App() {
     setActiveTab("quotes");
   };
 
-  // Get leads according to Role-Based Access Matrix (page 5)
+  // Get leads according to Role-Based Access Matrix
   const getLeadsForRole = (usr: User) => {
-    if (usr.role === Role.ADMIN || usr.role === Role.MANAGER) {
+    if (
+      usr.role === Role.ADMIN ||
+      usr.role === Role.MANAGER ||
+      usr.role === Role.COMMERCIAL ||
+      usr.role === Role.MARKETING
+    ) {
       return leads;
-    }
-    if (usr.role === Role.COMMERCIAL) {
-      // Consulter ses leads attribués uniquement
-      return leads.filter(l => l.commercialId === usr.id);
-    }
-    if (usr.role === Role.MARKETING) {
-      // Marketing focuses on qualifying New (Nouveau) leads and tracking
-      return leads.filter(l => l.statut === LeadStatus.NEW || l.statut === LeadStatus.QUALIFIED);
     }
     return [];
   };
@@ -602,6 +599,7 @@ export default function App() {
               userRole={activeUser.role}
               commercialId={activeUser.id}
               users={users}
+              readOnly={activeUser.role === Role.COMMERCIAL || activeUser.role === Role.MARKETING}
             />
           )}
 
@@ -627,6 +625,7 @@ export default function App() {
               leads={visibleLeads}
               onSelectLead={handleSelectLead}
               onAddLead={handleAddLead}
+              readOnly={activeUser.role === Role.COMMERCIAL || activeUser.role === Role.MARKETING}
             />
           )}
 

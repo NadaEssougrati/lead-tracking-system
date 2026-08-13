@@ -21,6 +21,7 @@ interface PipelineKanbanProps {
   userRole: Role;
   commercialId?: string;
   users: any[];
+  readOnly?: boolean;
 }
 
 const STAGES = [
@@ -39,7 +40,8 @@ export default function PipelineKanban({
   onUpdateLeadStatus,
   userRole,
   commercialId,
-  users
+  users,
+  readOnly = false,
 }: PipelineKanbanProps) {
   const { t } = usePreferences();
   const [searchQuery, setSearchQuery] = useState("");
@@ -59,11 +61,8 @@ export default function PipelineKanban({
     }
   };
 
-  // 1. Filter leads based on user permissions, search query, and advanced filters
+  // 1. Filter leads based on search query and advanced filters
   const filteredLeads = leads.filter((lead) => {
-    if (userRole === Role.COMMERCIAL) {
-      if (lead.commercialId !== commercialId) return false;
-    }
     
     if (searchQuery.trim() !== "") {
       const query = searchQuery.toLowerCase();
@@ -98,16 +97,10 @@ export default function PipelineKanban({
       .reduce((sum, l) => sum + l.valeurEstimee, 0);
   };
 
-  // Helper to verify transition rights (Agent Marketing limits)
-  const canMoveLead = (lead: Lead, targetStatus: LeadStatus) => {
-    if (userRole === Role.MARKETING) {
-      const allowedTransitions = [
-        { from: LeadStatus.NEW, to: LeadStatus.QUALIFIED },
-        { from: LeadStatus.NEW, to: LeadStatus.CONTACTED }
-      ];
-      return allowedTransitions.some(t => t.from === lead.statut && t.to === targetStatus);
-    }
-    return true; 
+  // Helper to verify transition rights — disabled entirely when readOnly
+  const canMoveLead = (_lead: Lead, _targetStatus: LeadStatus) => {
+    if (readOnly) return false;
+    return true;
   };
 
   const handleMoveStage = (e: React.MouseEvent, lead: Lead, direction: "next" | "prev") => {
@@ -166,10 +159,10 @@ export default function PipelineKanban({
           </div>
         </div>
 
-        {userRole === Role.MARKETING && (
-          <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 text-amber-700 px-3 py-1.5 rounded-lg text-xs font-semibold dark:bg-amber-950/20 dark:border-amber-900 dark:text-amber-450">
+        {readOnly && (
+          <div className="flex items-center gap-2 bg-slate-100 border border-slate-200 text-slate-600 px-3 py-1.5 rounded-lg text-xs font-semibold dark:bg-slate-800/60 dark:border-slate-700 dark:text-slate-400">
             <AlertCircle className="h-4 w-4" />
-            <span>{t("kanban.marketingLimit")}</span>
+            <span>Mode consultation — vous ne pouvez pas modifier le pipeline.</span>
           </div>
         )}
       </div>
@@ -259,17 +252,14 @@ export default function PipelineKanban({
               className="flex-col w-68 bg-slate-100/50 border border-slate-200/60 rounded-xl flex-shrink-0 flex max-h-full overflow-hidden shadow-sm dark:bg-slate-900/60 dark:border-slate-800/80"
               id={`kanban-column-${stage.id}`}
               style={{ transform: "rotateX(180deg)" }}
-              onDragOver={(e) => e.preventDefault()}
+              onDragOver={(e) => { if (!readOnly) e.preventDefault(); }}
               onDrop={(e) => {
+                if (readOnly) return;
                 e.preventDefault();
                 const leadId = e.dataTransfer.getData("leadId");
                 if (leadId) {
                   const draggedLead = leads.find(l => l.id === leadId);
                   if (draggedLead && draggedLead.statut !== stage.id) {
-                    if (!canMoveLead(draggedLead, stage.id)) {
-                      alert(t("kanban.restrictedAlert"));
-                      return;
-                    }
                     onUpdateLeadStatus(leadId, stage.id);
                   }
                 }
@@ -308,12 +298,13 @@ export default function PipelineKanban({
                       <div
                         key={lead.id}
                         onClick={() => onSelectLead(lead.id)}
-                        draggable={true}
+                        draggable={!readOnly}
                         onDragStart={(e) => {
+                          if (readOnly) return;
                           e.dataTransfer.setData("leadId", lead.id);
                           e.dataTransfer.effectAllowed = "move";
                         }}
-                        className="p-3.5 bg-white rounded-lg border border-slate-200 hover:border-slate-300 hover:bg-slate-50/50 transition-all duration-150 cursor-grab active:cursor-grabbing shadow-sm relative group flex flex-col gap-2 animate-fade-in dark:bg-slate-900 dark:border-slate-800 dark:hover:border-slate-700 dark:hover:bg-slate-800/50"
+                        className={`p-3.5 bg-white rounded-lg border border-slate-200 hover:border-slate-300 hover:bg-slate-50/50 transition-all duration-150 shadow-sm relative group flex flex-col gap-2 animate-fade-in dark:bg-slate-900 dark:border-slate-800 dark:hover:border-slate-700 dark:hover:bg-slate-800/50 ${readOnly ? "cursor-pointer" : "cursor-grab active:cursor-grabbing"}`}
                         id={`lead-card-${lead.id}`}
                       >
                         {/* Title and company */}
@@ -367,24 +358,26 @@ export default function PipelineKanban({
                             <span className="font-bold text-[11px] text-slate-750 dark:text-slate-350">{lead.valeurEstimee.toLocaleString('fr-FR')} MAD</span>
                           </div>
 
-                          <div className="flex gap-1 opacity-80 group-hover:opacity-100 transition-opacity">
-                            <button
-                              onClick={(e) => handleMoveStage(e, lead, "prev")}
-                              className="p-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-650 disabled:opacity-20 transition-all cursor-pointer dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
-                              disabled={stage.id === LeadStatus.NEW}
-                              title={t("kanban.prev")}
-                            >
-                              <ChevronLeft className="h-3 w-3" />
-                            </button>
-                            <button
-                              onClick={(e) => handleMoveStage(e, lead, "next")}
-                              className="p-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-650 disabled:opacity-20 transition-all cursor-pointer dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
-                              disabled={stage.id === LeadStatus.WON}
-                              title={t("kanban.next")}
-                            >
-                              <ChevronRight className="h-3 w-3" />
-                            </button>
-                          </div>
+                          {!readOnly && (
+                            <div className="flex gap-1 opacity-80 group-hover:opacity-100 transition-opacity">
+                              <button
+                                onClick={(e) => handleMoveStage(e, lead, "prev")}
+                                className="p-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-650 disabled:opacity-20 transition-all cursor-pointer dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+                                disabled={stage.id === LeadStatus.NEW}
+                                title={t("kanban.prev")}
+                              >
+                                <ChevronLeft className="h-3 w-3" />
+                              </button>
+                              <button
+                                onClick={(e) => handleMoveStage(e, lead, "next")}
+                                className="p-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-650 disabled:opacity-20 transition-all cursor-pointer dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+                                disabled={stage.id === LeadStatus.WON}
+                                title={t("kanban.next")}
+                              >
+                                <ChevronRight className="h-3 w-3" />
+                              </button>
+                            </div>
+                          )}
                         </div>
 
                       </div>
