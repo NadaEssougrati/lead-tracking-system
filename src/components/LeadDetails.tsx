@@ -609,9 +609,9 @@ export default function LeadDetails({
   // Enforce RBAC for delete and status change
   const canDeleteLead = activeUser.role === Role.ADMIN || activeUser.role === Role.MANAGER;
 
-  // Enforce status change rules — blocked entirely in readOnly mode
+  // Enforce status change rules — blocked for Marketing
   const handleStatusChange = async (newStatus: LeadStatus) => {
-    if (readOnly) return;
+    if (activeUser.role === Role.MARKETING) return;
     
     // Log the status change activity
     onAddActivity({
@@ -1316,8 +1316,8 @@ export default function LeadDetails({
                 <div key={step} className="flex items-center">
                   <button
                     onClick={() => handleStatusChange(step)}
-                    disabled={readOnly}
-                    className={`px-3 py-1 text-xs rounded-full font-semibold transition-all duration-150 ${readOnly ? "cursor-default opacity-80" : "cursor-pointer"} ${
+                    disabled={activeUser.role === Role.MARKETING}
+                    className={`px-3 py-1 text-xs rounded-full font-semibold transition-all duration-150 ${activeUser.role === Role.MARKETING ? "cursor-default opacity-80" : "cursor-pointer"} ${
                       isCurrent
                         ? "bg-blue-600 text-white shadow-md shadow-blue-500/10"
                         : isPast

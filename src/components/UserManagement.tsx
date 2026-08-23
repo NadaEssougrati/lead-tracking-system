@@ -20,7 +20,9 @@ import {
   EyeOff,
   Key,
   Sparkles,
-  RefreshCw
+  RefreshCw,
+  Pencil,
+  X
 } from "lucide-react";
 import { User, Role } from "../types";
 import { usePreferences } from "../AppPreferences";
@@ -29,7 +31,7 @@ interface UserManagementProps {
   users: User[];
   activeUser: User;
   onUpdateUserStatus: (id: string, active: boolean) => void;
-  onUpdateUser?: (id: string, data: { nom?: string; email?: string; telephone?: string; role?: Role }) => Promise<void>;
+  onUpdateUser?: (id: string, data: { nom?: string; email?: string; telephone?: string; role?: Role; motDePasse?: string }) => Promise<void>;
   onAddUser: (user: Omit<User, "id"> & { motDePasse: string }) => Promise<void>;
   onUpdateProfile: (data: { nom?: string; email?: string; telephone?: string; avatar?: string }) => Promise<void>;
   onUpdatePassword: (currentPassword: string, newPassword: string) => Promise<void>;
@@ -39,6 +41,7 @@ export default function UserManagement({
   users,
   activeUser,
   onUpdateUserStatus,
+  onUpdateUser,
   onAddUser,
   onUpdateProfile,
   onUpdatePassword
@@ -107,11 +110,45 @@ export default function UserManagement({
     setShowGenPopup(false);
   };
 
-  // CRM Config Parameter States
-  const [leadSources, setLeadSources] = useState([
-    "Site web", "Réseaux sociaux", "Recommandation", "Emailing", "Salon professionnel", "Appel téléphonique"
-  ]);
-  const [newSource, setNewSource] = useState("");
+
+
+  // Edit User Form States
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [editNom, setEditNom] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [editTelephone, setEditTelephone] = useState("");
+  const [editRole, setEditRole] = useState<Role>(Role.COMMERCIAL);
+  const [editMotDePasse, setEditMotDePasse] = useState("");
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+
+  const handleStartEdit = (u: User) => {
+    setEditingUser(u);
+    setEditNom(u.nom);
+    setEditEmail(u.email);
+    setEditTelephone(u.telephone || "");
+    setEditRole(u.role);
+    setEditMotDePasse("");
+  };
+
+  const handleEditUserSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingUser || !onUpdateUser) return;
+    setIsSavingEdit(true);
+    try {
+      await onUpdateUser(editingUser.id, {
+        nom: editNom,
+        email: editEmail,
+        telephone: editTelephone,
+        role: editRole,
+        ...(editMotDePasse ? { motDePasse: editMotDePasse } : {})
+      });
+      setEditingUser(null);
+    } catch (err: any) {
+      alert("Erreur lors de la mise à jour de l'utilisateur : " + err.message);
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
 
   const handleAddUserSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -133,12 +170,7 @@ export default function UserManagement({
 alert(`${t("team.successMessage")} ${nom} (${role}) ${t("team.successMessage2")}`);
   };
 
-  const handleAddSource = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newSource.trim()) return;
-    setLeadSources([...leadSources, newSource.trim()]);
-    setNewSource("");
-  };
+
 
   return (
     <div className="flex-1 bg-slate-50 p-6 overflow-y-auto max-h-screen text-slate-850 dark:bg-slate-950" id="user-management-root">
@@ -173,6 +205,7 @@ alert(`${t("team.successMessage")} ${nom} (${role}) ${t("team.successMessage2")}
                     <th className="pb-2.5">{t("team.colEmail")}</th>
                     <th className="pb-2.5">{t("team.colRole")}</th>
                     <th className="pb-2.5 text-center">{t("team.colStatus")}</th>
+                    {isAdmin && <th className="pb-2.5 text-right">Actions</th>}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-slate-600">
@@ -217,6 +250,17 @@ alert(`${t("team.successMessage")} ${nom} (${role}) ${t("team.successMessage2")}
                           )}
                         </button>
                       </td>
+                      {isAdmin && (
+                        <td className="py-3 text-right">
+                          <button
+                            onClick={() => handleStartEdit(u)}
+                            className="p-1 text-slate-500 hover:text-blue-600 transition-colors cursor-pointer animate-fade-in"
+                            title="Modifier les informations"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </button>
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>
@@ -458,54 +502,112 @@ alert(`${t("team.successMessage")} ${nom} (${role}) ${t("team.successMessage2")}
           </div>
         </div>
 
-        {isAdmin && (
-          <div className="lg:col-span-5 bg-white border border-slate-200 p-5 rounded-xl text-xs shadow-sm">
-            <h3 className="font-bold text-sm text-slate-800 mb-4 flex items-center gap-2">
-<Settings className="h-4.5 w-4.5 text-blue-600" />
-              {t("team.crmSettings")}
-            </h3>
 
-            <div className="space-y-4">
-              <div>
-                <label className="block text-slate-500 font-bold mb-2 uppercase text-[9px]">{t("team.sources")}</label>
-                <div className="flex flex-wrap gap-1.5 mb-3">
-                  {leadSources.map((src) => (
-                    <span key={src} className="px-2.5 py-1 bg-slate-50 rounded border border-slate-200 font-semibold text-slate-600">
-                      {src}
-                    </span>
-                  ))}
+
+        {/* Edit User Modal */}
+        {editingUser && (
+          <div 
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                setEditingUser(null);
+              }
+            }}
+            className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50 cursor-pointer animate-fade-in"
+          >
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-md w-full p-6 relative cursor-default dark:bg-slate-900 dark:border-slate-800">
+              <button 
+                onClick={() => setEditingUser(null)}
+                className="absolute top-4 right-4 p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-full transition-colors cursor-pointer dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700"
+              >
+                <X className="h-4 w-4" />
+              </button>
+              
+              <div className="mb-5 flex items-center gap-2">
+                <div className="h-9 w-9 rounded-xl bg-blue-50 text-blue-600 grid place-items-center dark:bg-blue-900/20 dark:text-blue-400">
+                  <Pencil className="h-4.5 w-4.5" />
                 </div>
+                <div>
+                  <h3 className="font-bold text-sm text-slate-900 dark:text-white">Modifier le Collaborateur</h3>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">Mettez à jour les informations du compte.</p>
+                </div>
+              </div>
 
-                <form onSubmit={handleAddSource} className="flex gap-2">
+              <form onSubmit={handleEditUserSubmit} className="space-y-4 text-xs">
+                <div>
+                  <label className="block text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[9px] mb-1 font-bold">Nom Complet</label>
                   <input
                     type="text"
-                    disabled={!isAdmin}
-                    placeholder={t("team.sourcePlaceholder")}
-                    value={newSource}
-                    onChange={(e) => setNewSource(e.target.value)}
-                    className="flex-1 bg-slate-50 rounded p-2 border border-slate-200 text-slate-800 text-xs disabled:opacity-40 focus:bg-white focus:outline-none"
+                    required
+                    value={editNom}
+                    onChange={(e) => setEditNom(e.target.value)}
+                    className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-850 dark:border-slate-700 dark:text-white font-medium"
                   />
+                </div>
+
+                <div>
+                  <label className="block text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[9px] mb-1 font-bold">Adresse Email</label>
+                  <input
+                    type="email"
+                    required
+                    value={editEmail}
+                    onChange={(e) => setEditEmail(e.target.value)}
+                    className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-850 dark:border-slate-700 dark:text-white font-medium"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[9px] mb-1 font-bold">Rôle Système</label>
+                    <select
+                      value={editRole}
+                      onChange={(e) => setEditRole(e.target.value as Role)}
+                      className="w-full rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-2 text-slate-800 focus:outline-none dark:bg-slate-850 dark:border-slate-700 dark:text-white cursor-pointer font-medium"
+                    >
+                      <option value={Role.ADMIN}>{Role.ADMIN}</option>
+                      <option value={Role.MANAGER}>{Role.MANAGER}</option>
+                      <option value={Role.COMMERCIAL}>{Role.COMMERCIAL}</option>
+                      <option value={Role.MARKETING}>{Role.MARKETING}</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[9px] mb-1 font-bold">Téléphone</label>
+                    <input
+                      type="text"
+                      value={editTelephone}
+                      onChange={(e) => setEditTelephone(e.target.value)}
+                      className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-850 dark:border-slate-700 dark:text-white font-medium"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[9px] mb-1 font-bold">Nouveau Mot de Passe (Optionnel)</label>
+                  <input
+                    type="password"
+                    placeholder="Laisser vide pour ne pas modifier"
+                    value={editMotDePasse}
+                    onChange={(e) => setEditMotDePasse(e.target.value)}
+                    className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-850 dark:border-slate-700 dark:text-white font-medium"
+                  />
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setEditingUser(null)}
+                    className="flex-1 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-slate-700 font-semibold text-sm hover:bg-slate-50 dark:bg-slate-800 dark:border-slate-700 dark:text-white dark:hover:bg-slate-700 transition flex items-center justify-center cursor-pointer"
+                  >
+                    Annuler
+                  </button>
                   <button
                     type="submit"
-                    disabled={!isAdmin}
-                    className="bg-slate-100 hover:bg-slate-200 disabled:opacity-40 border border-slate-200 font-bold text-xs px-3 rounded text-slate-700"
+                    disabled={isSavingEdit}
+                    className="flex-1 rounded-lg bg-blue-600 px-4 py-2.5 text-white font-semibold text-sm hover:bg-blue-500 transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                   >
-                    {t("team.addNewSource")}
+                    {isSavingEdit ? "Enregistrement..." : "Enregistrer"}
                   </button>
-                </form>
-              </div>
-
-              <div className="border-t border-slate-100 pt-3 space-y-2.5">
-                <p className="font-bold text-slate-700 text-[10px] uppercase">{t("team.businessRules")}</p>
-                <div className="flex items-center justify-between p-2 bg-slate-50 rounded border border-slate-150 text-slate-500">
-                  <span>{t("team.inactivityDelay")}</span>
-                  <span className="font-bold text-slate-850">4 jours</span>
                 </div>
-                <div className="flex items-center justify-between p-2 bg-slate-50 rounded border border-slate-150 text-slate-500">
-                  <span>{t("team.minConfidence")}</span>
-                  <span className="font-bold text-slate-850">60 %</span>
-                </div>
-              </div>
+              </form>
             </div>
           </div>
         )}

@@ -413,8 +413,8 @@ export default function App() {
     setUsers((current) => current.map(user => user.id === id ? toUser(saved) : user));
   };
 
-  // Update user (name, email, phone, role) — admin only
-  const handleUpdateUser = async (id: string, data: { nom?: string; email?: string; telephone?: string; role?: Role }) => {
+  // Update user (name, email, phone, role, password) — admin only
+  const handleUpdateUser = async (id: string, data: { nom?: string; email?: string; telephone?: string; role?: Role; motDePasse?: string }) => {
     const nom = data.nom || "";
     const [prenom, ...nomParts] = nom.trim().split(/\s+/);
     const role = data.role === Role.MARKETING ? "AgentMarketing" : data.role;
@@ -423,6 +423,7 @@ export default function App() {
     if (data.email !== undefined) payload.email = data.email;
     if (data.telephone !== undefined) payload.telephone = data.telephone;
     if (data.role !== undefined) payload.role = role;
+    if (data.motDePasse !== undefined) payload.motDePasse = data.motDePasse;
     const saved = await api<any>(`/users/${id}`, { method: "PATCH", body: JSON.stringify(payload) });
     setUsers((current) => current.map(user => user.id === id ? toUser(saved) : user));
   };
@@ -513,7 +514,10 @@ export default function App() {
       case "emails": return `${t("header.title.emails")} (${emailProvider === "resend" ? "Mode Resend" : "Mode SMTP Individuel"})`;
       case "meetings": return t("header.title.meetings");
       case "quotes": return t("header.title.quotes");
-      case "team": return t("header.title.team");
+      case "team": 
+        return activeUser.role === Role.ADMIN 
+          ? t("header.title.team.admin") 
+          : t("header.title.team");
       case "settings": return t("nav.accountSettings");
       case "system_settings": return t("nav.systemSettings");
       default: return "Tracking Lead System";
@@ -599,7 +603,7 @@ export default function App() {
               userRole={activeUser.role}
               commercialId={activeUser.id}
               users={users}
-              readOnly={activeUser.role === Role.COMMERCIAL || activeUser.role === Role.MARKETING}
+              readOnly={activeUser.role === Role.MARKETING}
             />
           )}
 

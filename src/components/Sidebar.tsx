@@ -177,7 +177,11 @@ export default function Sidebar({
                     }`}
                   >
                     <Icon className="h-4 w-4 flex-shrink-0" />
-                    <span>{t(item.labelKey)}</span>
+                    <span>
+                      {item.id === "team" && activeUser.role === Role.ADMIN
+                        ? t("nav.team.admin")
+                        : t(item.labelKey)}
+                    </span>
                   </button>
                 );
               })}

@@ -14,7 +14,9 @@ import {
   Play,
   Database,
   Download,
-  Upload
+  Upload,
+  Settings,
+  Plus
 } from "lucide-react";
 import { usePreferences } from "../AppPreferences";
 import { getEmailConfig, saveEmailConfig, testEmailConfig, api } from "../api";
@@ -31,10 +33,7 @@ export default function SystemSettings() {
   const [isSavingEmailConfig, setIsSavingEmailConfig] = useState(false);
   const [isTestingEmailConfig, setIsTestingEmailConfig] = useState(false);
 
-  // Business Rules state (persisted locally)
-  const [inactivityDelay, setInactivityDelay] = useState(() => localStorage.getItem("sys_inactivity_delay") || "14");
-  const [minConfidence, setMinConfidence] = useState(() => localStorage.getItem("sys_min_confidence") || "65");
-  const [rulesFeedback, setRulesFeedback] = useState<string | null>(null);
+
 
   // Session Settings state (persisted server-side)
   const [sessionLength, setSessionLength] = useState("15m");
@@ -115,12 +114,7 @@ export default function SystemSettings() {
     }
   };
 
-  const handleSaveRules = () => {
-    localStorage.setItem("sys_inactivity_delay", inactivityDelay);
-    localStorage.setItem("sys_min_confidence", minConfidence);
-    setRulesFeedback("Règles métier mises à jour !");
-    setTimeout(() => setRulesFeedback(null), 3000);
-  };
+
 
   const handleSaveSession = async () => {
     setIsSavingSession(true);
@@ -152,6 +146,24 @@ export default function SystemSettings() {
   const [backupFeedback, setBackupFeedback] = useState<{ type: "success" | "error"; msg: string } | null>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
+
+  // CRM Sources Configuration State (persisted locally)
+  const [leadSources, setLeadSources] = useState<string[]>(() => {
+    const saved = localStorage.getItem("sys_lead_sources");
+    return saved ? JSON.parse(saved) : [
+      "Site web", "Réseaux sociaux", "Recommandation", "Emailing", "Salon professionnel", "Appel téléphonique"
+    ];
+  });
+  const [newSource, setNewSource] = useState("");
+
+  const handleAddSource = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newSource.trim()) return;
+    const updated = [...leadSources, newSource.trim()];
+    setLeadSources(updated);
+    localStorage.setItem("sys_lead_sources", JSON.stringify(updated));
+    setNewSource("");
+  };
 
   const handleExportBackup = async () => {
     setBackupFeedback(null);
@@ -331,68 +343,7 @@ export default function SystemSettings() {
             </div>
           </div>
 
-          {/* Business Rules Card */}
-          <div className="bg-white border border-slate-200 p-6 rounded-xl shadow-sm dark:bg-slate-900 dark:border-slate-800">
-            <div className="flex items-center gap-3 mb-5">
-              <div className="h-11 w-11 rounded-xl bg-amber-50 text-amber-600 grid place-items-center dark:bg-amber-900/20 dark:text-amber-400">
-                <ShieldAlert className="h-5 w-5" />
-              </div>
-              <div>
-                <p className="text-slate-850 font-bold text-sm dark:text-white">{t("team.businessRules")}</p>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400">Définissez les contraintes opérationnelles globales et alertes du CRM.</p>
-              </div>
-            </div>
 
-            <div className="space-y-4 text-xs">
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="text-slate-500 dark:text-slate-400 uppercase tracking-[0.15em] text-[9px]">{t("team.inactivityDelay")}</label>
-                  <span className="text-[11px] font-bold text-blue-600 dark:text-blue-400">{inactivityDelay} Jours</span>
-                </div>
-                <input
-                  type="range"
-                  min="2"
-                  max="60"
-                  value={inactivityDelay}
-                  onChange={(e) => setInactivityDelay(e.target.value)}
-                  className="w-full h-1.5 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-blue-600 dark:bg-slate-800"
-                />
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="text-slate-500 dark:text-slate-400 uppercase tracking-[0.15em] text-[9px]">{t("team.minConfidence")}</label>
-                  <span className="text-[11px] font-bold text-amber-600 dark:text-amber-400">{minConfidence} %</span>
-                </div>
-                <input
-                  type="range"
-                  min="10"
-                  max="99"
-                  value={minConfidence}
-                  onChange={(e) => setMinConfidence(e.target.value)}
-                  className="w-full h-1.5 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-amber-500 dark:bg-slate-800"
-                />
-              </div>
-
-              <div className="pt-2">
-                <button
-                  type="button"
-                  onClick={handleSaveRules}
-                  className="w-full rounded-lg bg-slate-800 px-4 py-2.5 text-white font-semibold text-sm hover:bg-slate-700 dark:bg-slate-700 dark:hover:bg-slate-600 transition flex items-center justify-center gap-2 cursor-pointer"
-                >
-                  <Save className="h-4 w-4" />
-                  Appliquer les Règles
-                </button>
-              </div>
-
-              {rulesFeedback && (
-                <div className="p-3 bg-emerald-50 border border-emerald-100 text-emerald-700 rounded-xl text-[11px] flex items-center gap-2 dark:bg-emerald-950/20 dark:border-emerald-900/30 dark:text-emerald-400">
-                  <CheckCircle2 className="h-4 w-4" />
-                  <span>{rulesFeedback}</span>
-                </div>
-              )}
-            </div>
-          </div>
 
           {/* Session Length Configuration Card */}
           <div className="bg-white border border-slate-200 p-5 rounded-xl shadow-sm dark:bg-slate-900 dark:border-slate-800 space-y-6 animate-fade-in">
@@ -550,7 +501,7 @@ export default function SystemSettings() {
                 </button>
               </div>
 
-              {backupFeedback && (
+            {backupFeedback && (
                 <div className={`p-3 rounded-xl border text-[11px] flex items-center gap-2 ${
                   backupFeedback.type === "success" 
                     ? "bg-emerald-50 border-emerald-100 text-emerald-700 dark:bg-emerald-950/20 dark:border-emerald-900/30 dark:text-emerald-400" 
@@ -561,6 +512,50 @@ export default function SystemSettings() {
                 </div>
               )}
 
+            </div>
+          </div>
+
+          {/* CRM Sources Card */}
+          <div className="bg-white border border-slate-200 p-6 rounded-xl shadow-sm dark:bg-slate-900 dark:border-slate-800">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="h-11 w-11 rounded-xl bg-blue-50 text-blue-600 grid place-items-center dark:bg-blue-900/20 dark:text-blue-400">
+                <Settings className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-slate-850 font-bold text-sm dark:text-white">Paramètres généraux du système (CRM)</p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">Configurez les canaux et sources d'acquisition des leads.</p>
+              </div>
+            </div>
+
+            <div className="space-y-4 text-xs">
+              <div>
+                <label className="block text-slate-500 dark:text-slate-400 uppercase tracking-[0.15em] text-[9px] mb-2 font-bold">Canaux d'acquisition disponibles :</label>
+                <div className="flex flex-wrap gap-1.5 mb-3">
+                  {leadSources.map((src) => (
+                    <span key={src} className="px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded font-semibold text-slate-650 dark:bg-slate-850 dark:border-slate-700 dark:text-slate-300">
+                      {src}
+                    </span>
+                  ))}
+                </div>
+
+                <form onSubmit={handleAddSource} className="flex gap-2 mt-4">
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ex: Partenaire"
+                    value={newSource}
+                    onChange={(e) => setNewSource(e.target.value)}
+                    className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-850 focus:outline-none dark:bg-slate-850 dark:border-slate-700 dark:text-white font-medium"
+                  />
+                  <button
+                    type="submit"
+                    className="bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs px-4 py-2 rounded-lg transition-colors cursor-pointer flex items-center gap-1 flex-shrink-0"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    Ajouter
+                  </button>
+                </form>
+              </div>
             </div>
           </div>
 
