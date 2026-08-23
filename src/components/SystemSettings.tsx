@@ -11,7 +11,10 @@ import {
   CheckCircle2, 
   HelpCircle,
   AlertTriangle,
-  Play
+  Play,
+  Database,
+  Download,
+  Upload
 } from "lucide-react";
 import { usePreferences } from "../AppPreferences";
 import { getEmailConfig, saveEmailConfig, testEmailConfig, api } from "../api";
@@ -139,6 +142,92 @@ export default function SystemSettings() {
       setTimeout(() => setSessionFeedback(null), 4000);
     }
   };
+
+  // Database Backup & Restore state
+  const [backupStartDate, setBackupStartDate] = useState("");
+  const [backupEndDate, setBackupEndDate] = useState("");
+  const [importMode, setImportMode] = useState<"merge" | "replace">("merge");
+  const [importStrategy, setImportStrategy] = useState<"keep" | "replace">("keep");
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [backupFeedback, setBackupFeedback] = useState<{ type: "success" | "error"; msg: string } | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+
+  const handleExportBackup = async () => {
+    setBackupFeedback(null);
+    setIsExporting(true);
+    try {
+      const res = await api<any>("/backup/export", {
+        method: "POST",
+        body: JSON.stringify({
+          startDate: backupStartDate || undefined,
+          endDate: backupEndDate || undefined
+        })
+      });
+
+      // Create a downloadable JSON blob file
+      const blob = new Blob([JSON.stringify(res, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      const filename = `backup-leadflow-${new Date().toISOString().split("T")[0]}.json`;
+      link.href = url;
+      link.download = filename;
+      link.click();
+      URL.revokeObjectURL(url);
+
+      setBackupFeedback({ type: "success", msg: "Sauvegarde générée et téléchargée avec succès." });
+    } catch (err: any) {
+      setBackupFeedback({ type: "error", msg: err.message || "Échec de l'exportation." });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleImportBackup = async () => {
+    setBackupFeedback(null);
+    if (!importFile) {
+      setBackupFeedback({ type: "error", msg: "Veuillez sélectionner un fichier JSON de sauvegarde." });
+      return;
+    }
+
+    setIsImporting(true);
+    try {
+      const fileText = await importFile.text();
+      let backupData = JSON.parse(fileText);
+
+      // Auto-detect and normalize legacy flat backups
+      if (backupData && !backupData.data && (backupData.leads || backupData.users)) {
+        backupData = {
+          version: "1.0",
+          exportedAt: new Date().toISOString(),
+          data: backupData
+        };
+      }
+
+      if (!backupData || !backupData.version || !backupData.data) {
+        throw new Error("Le format du fichier de sauvegarde est invalide.");
+      }
+
+      const res = await api<any>("/backup/import", {
+        method: "POST",
+        body: JSON.stringify({
+          mode: importMode,
+          mergeStrategy: importStrategy,
+          backupData
+        })
+      });
+
+      setBackupFeedback({ type: "success", msg: res.message || "Restauration effectuée avec succès !" });
+      setImportFile(null);
+      const fileInput = document.getElementById("backup-file-input") as HTMLInputElement;
+      if (fileInput) fileInput.value = "";
+    } catch (err: any) {
+      setBackupFeedback({ type: "error", msg: err.message || "Échec de la restauration." });
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
 
   return (
     <div className="flex-1 bg-slate-50 p-6 overflow-y-auto max-h-screen text-slate-850 dark:bg-slate-950" id="system-settings-root">
@@ -346,12 +435,132 @@ export default function SystemSettings() {
                 </button>
               </div>
 
-              {sessionFeedback && (
+            {sessionFeedback && (
                 <div className="p-3 bg-emerald-50 border border-emerald-100 text-emerald-700 rounded-xl text-[11px] flex items-center gap-2 dark:bg-emerald-950/20 dark:border-emerald-900/30 dark:text-emerald-400">
                   <CheckCircle2 className="h-4 w-4" />
                   <span>{sessionFeedback}</span>
                 </div>
               )}
+            </div>
+          </div>
+
+          {/* Database Backup & Restore Card */}
+          <div className="bg-white border border-slate-200 p-6 rounded-xl shadow-sm dark:bg-slate-900 dark:border-slate-800">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="h-11 w-11 rounded-xl bg-indigo-50 text-indigo-600 grid place-items-center dark:bg-indigo-900/20 dark:text-indigo-400">
+                <Database className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-slate-850 font-bold text-sm dark:text-white">Sauvegarde & Restauration de la Base de Données</p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">Exportez les données du système ou restaurez-les depuis un fichier JSON.</p>
+              </div>
+            </div>
+
+            <div className="space-y-5 text-xs">
+              
+              {/* Section: Export */}
+              <div className="border border-slate-100 rounded-xl p-3.5 bg-slate-50/50 space-y-3 dark:border-slate-800 dark:bg-slate-900/50">
+                <p className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                  <Download className="h-4 w-4 text-blue-600" /> 1. Exporter les données
+                </p>
+                
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[10px] text-slate-500 font-bold uppercase mb-1">Date de début (Optionnelle)</label>
+                    <input
+                      type="date"
+                      value={backupStartDate}
+                      onChange={(e) => setBackupStartDate(e.target.value)}
+                      className="w-full bg-white border border-slate-200 rounded-lg p-2 text-slate-800 text-xs focus:outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-slate-500 font-bold uppercase mb-1">Date de fin (Optionnelle)</label>
+                    <input
+                      type="date"
+                      value={backupEndDate}
+                      onChange={(e) => setBackupEndDate(e.target.value)}
+                      className="w-full bg-white border border-slate-200 rounded-lg p-2 text-slate-800 text-xs focus:outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-white"
+                    />
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleExportBackup}
+                  disabled={isExporting}
+                  className="w-full rounded-lg bg-blue-600 px-4 py-2.5 text-white font-semibold hover:bg-blue-500 transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-40"
+                >
+                  <Download className="h-4 w-4" />
+                  {isExporting ? "Génération..." : "Créer et télécharger la sauvegarde"}
+                </button>
+              </div>
+
+              {/* Section: Import */}
+              <div className="border border-slate-100 rounded-xl p-3.5 bg-slate-50/50 space-y-3 dark:border-slate-800 dark:bg-slate-900/50">
+                <p className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                  <Upload className="h-4 w-4 text-emerald-600" /> 2. Importer / Restaurer les données
+                </p>
+
+                <div>
+                  <label className="block text-[10px] text-slate-500 font-bold uppercase mb-1">Fichier de sauvegarde (.json)</label>
+                  <input
+                    type="file"
+                    id="backup-file-input"
+                    accept=".json"
+                    onChange={(e) => setImportFile(e.target.files?.[0] || null)}
+                    className="w-full bg-white border border-slate-200 rounded-lg p-1.5 text-slate-800 text-xs focus:outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-white cursor-pointer"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[10px] text-slate-500 font-bold uppercase mb-1">Méthode de restauration</label>
+                    <select
+                      value={importMode}
+                      onChange={(e) => setImportMode(e.target.value as any)}
+                      className="w-full bg-white border border-slate-200 rounded-lg p-2 text-slate-800 cursor-pointer text-xs focus:outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-white"
+                    >
+                      <option value="merge">Fusionner avec les données existantes</option>
+                      <option value="replace">Remplacer toute la base de données</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-slate-500 font-bold uppercase mb-1">Stratégie en cas de doublons (Leads)</label>
+                    <select
+                      value={importStrategy}
+                      onChange={(e) => setImportStrategy(e.target.value as any)}
+                      disabled={importMode === "replace"}
+                      className="w-full bg-white border border-slate-200 rounded-lg p-2 text-slate-800 cursor-pointer text-xs focus:outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-white disabled:opacity-40"
+                    >
+                      <option value="keep">Conserver les données locales existantes</option>
+                      <option value="replace">Écraser par les données de sauvegarde</option>
+                    </select>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleImportBackup}
+                  disabled={isImporting || !importFile}
+                  className="w-full rounded-lg bg-emerald-600 px-4 py-2.5 text-white font-semibold hover:bg-emerald-505 transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-40"
+                >
+                  <Upload className="h-4 w-4" />
+                  {isImporting ? "Restauration..." : "Restaurer la base de données"}
+                </button>
+              </div>
+
+              {backupFeedback && (
+                <div className={`p-3 rounded-xl border text-[11px] flex items-center gap-2 ${
+                  backupFeedback.type === "success" 
+                    ? "bg-emerald-50 border-emerald-100 text-emerald-700 dark:bg-emerald-950/20 dark:border-emerald-900/30 dark:text-emerald-400" 
+                    : "bg-rose-50 border-rose-100 text-rose-700 dark:bg-rose-950/20 dark:border-rose-900/30 dark:text-rose-450"
+                }`}>
+                  {backupFeedback.type === "success" ? <CheckCircle2 className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
+                  <span>{backupFeedback.msg}</span>
+                </div>
+              )}
+
             </div>
           </div>
 
