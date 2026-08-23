@@ -23,13 +23,15 @@ import {
   Mail,
   Calendar
 } from "lucide-react";
-import { Task, Lead, TaskStatus, User as UserType, LeadStatus, TaskType } from "../types";
+import { Task, Lead, TaskStatus, User as UserType, LeadStatus, TaskType, Role } from "../types";
 import { usePreferences } from "../AppPreferences";
+
 
 interface GlobalTasksProps {
   tasks: Task[];
   leads: Lead[];
   users: UserType[];
+  activeUser: UserType;
   activeLeadId?: string;
   onUpdateTaskStatus?: (taskId: string, newStatus: TaskStatus) => void;
   onUpdateTask?: (taskId: string, updates: Partial<Task> & { utilisateurId?: string }) => void;
@@ -41,6 +43,7 @@ export default function GlobalTasks({
   tasks,
   leads,
   users,
+  activeUser,
   activeLeadId,
   onUpdateTaskStatus = () => {},
   onUpdateTask = () => {},
@@ -55,7 +58,13 @@ export default function GlobalTasks({
   const [newDesc, setNewDesc] = useState("");
   const [newLeadId, setNewLeadId] = useState("");
   const [newDate, setNewDate] = useState("");
-  const [newAssigned, setNewAssigned] = useState("");
+  const [newAssigned, setNewAssigned] = useState(activeUser.role === Role.COMMERCIAL ? activeUser.id : "");
+  
+  React.useEffect(() => {
+    if (activeUser && activeUser.role === Role.COMMERCIAL) {
+      setNewAssigned(activeUser.id);
+    }
+  }, [activeUser]);
   const [newCritique, setNewCritique] = useState(false);
   const [newType, setNewType] = useState<TaskType>(TaskType.OTHER);
   const [taskFeedback, setTaskFeedback] = useState<string | null>(null);
@@ -74,14 +83,18 @@ export default function GlobalTasks({
     if (!newTitre.trim() || !newLeadId) return;
 
     try {
+      const isCommercial = activeUser.role === Role.COMMERCIAL;
+      const finalAssigneeId = isCommercial ? activeUser.id : newAssigned;
+      const finalAssigneeName = isCommercial ? activeUser.nom : (users.find(u => u.id === finalAssigneeId)?.nom || "");
+
       await onAddTask({
         leadId: newLeadId,
         titre: newTitre.trim(),
         description: newDesc,
         statut: TaskStatus.TODO,
         dateEcheance: newDate || new Date(Date.now() + 86400000 * 2).toISOString().split("T")[0],
-        assigneA: newAssigned ? (users.find(u => u.id === newAssigned)?.nom || "") : "",
-        utilisateurId: newAssigned || undefined,
+        assigneA: finalAssigneeName,
+        utilisateurId: finalAssigneeId || undefined,
         critique: newCritique,
         type: newType,
       });
@@ -92,7 +105,9 @@ export default function GlobalTasks({
       setNewDesc("");
       setNewLeadId("");
       setNewDate("");
-      setNewAssigned("");
+      if (activeUser.role !== Role.COMMERCIAL) {
+        setNewAssigned("");
+      }
       setNewCritique(false);
       setNewType(TaskType.OTHER);
     } catch (err) {
@@ -330,7 +345,8 @@ const filterValues = () => {
                   <select
                     value={newAssigned}
                     onChange={(e) => setNewAssigned(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-slate-800 cursor-pointer text-xs focus:bg-white focus:outline-none"
+                    disabled={activeUser.role === Role.COMMERCIAL}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-slate-800 cursor-pointer text-xs focus:bg-white focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed"
                   >
                     <option value="">{t("tasks.chooseUser")}</option>
                     {users.map((u) => (
@@ -580,7 +596,8 @@ const filterValues = () => {
                   <select
                     value={editAssigned}
                     onChange={(e) => setEditAssigned(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 focus:outline-none"
+                    disabled={activeUser.role === Role.COMMERCIAL}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed"
                   >
                     <option value="">{t("tasks.noAssignee")}</option>
                     {users.map((u) => (

@@ -634,6 +634,7 @@ export default function App() {
               tasks={tasks}
               leads={visibleLeads}
               users={users}
+              activeUser={activeUser}
               activeLeadId={selectedLeadId || undefined}
               onUpdateTaskStatus={handleUpdateTaskStatus}
               onAddTask={handleAddTask}

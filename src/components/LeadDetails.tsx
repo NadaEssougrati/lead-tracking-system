@@ -2041,7 +2041,8 @@ export default function LeadDetails({
                   <select
                     value={editTaskAssigneeId}
                     onChange={(e) => setEditTaskAssigneeId(e.target.value)}
-                    className="w-full bg-slate-50 rounded-lg p-2 border border-slate-200 text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:bg-white cursor-pointer"
+                    disabled={activeUser.role === Role.COMMERCIAL}
+                    className="w-full bg-slate-50 rounded-lg p-2 border border-slate-200 text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:bg-white cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
                   >
                     {users.map((u) => (
                       <option key={u.id} value={u.id}>{u.nom}</option>
