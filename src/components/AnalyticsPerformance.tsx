@@ -20,7 +20,8 @@ import {
   User,
   ArrowRight,
   Info,
-  Sliders
+  Sliders,
+  Printer
 } from "lucide-react";
 import { 
   ResponsiveContainer, 
@@ -132,13 +133,362 @@ export default function AnalyticsPerformance({ leads, users }: AnalyticsPerforma
   // --- 4. Interactive Simulation Calculations ---
   const estimatedSignValue = activeLeads.reduce((acc, curr) => acc + curr.valeurEstimee, 0);
 
+  const handleExportPDF = () => {
+    // Create hidden iframe
+    const iframe = document.createElement("iframe");
+    iframe.style.position = "absolute";
+    iframe.style.width = "0px";
+    iframe.style.height = "0px";
+    iframe.style.border = "none";
+    iframe.style.top = "-9999px";
+    document.body.appendChild(iframe);
+
+    const doc = iframe.contentDocument || iframe.contentWindow?.document;
+    if (!doc) return;
+
+    // Computed figures
+    const totalLeadsCount = filteredLeads.length;
+    const totalWonRevenue = wonLeads.reduce((acc, curr) => acc + curr.valeurEstimee, 0);
+
+    // Build lead source split rows
+    const sourceRows = sourcePerformanceData.map((data, index) => {
+      const pipeVal = leads
+        .filter(l => l.source === data.name && activeStages.includes(l.statut))
+        .reduce((acc, curr) => acc + curr.valeurEstimee, 0);
+      
+      const convRateColor = data.conversionRate >= 40 ? "#10b981" : data.conversionRate >= 20 ? "#3b82f6" : "#f59e0b";
+      const roiColor = data.roi >= 300 ? "#10b981" : data.roi >= 0 ? "#3b82f6" : "#ef4444";
+      
+      return `
+        <tr style="background:${index % 2 === 0 ? '#f8fafc' : '#ffffff'};">
+          <td style="padding:10px 12px;font-size:12px;font-weight:700;color:#1e293b;border-bottom:1px solid #e2e8f0;">${data.name}</td>
+          <td style="padding:10px 12px;font-size:12px;text-align:center;border-bottom:1px solid #e2e8f0;">
+            <span style="background:${convRateColor}15;color:${convRateColor};padding:3px 8px;border-radius:12px;font-weight:700;font-size:10px;">
+              ${data.conversionRate}%
+            </span>
+          </td>
+          <td style="padding:10px 12px;font-size:12px;color:#475569;text-align:right;border-bottom:1px solid #e2e8f0;">${pipeVal.toLocaleString('fr-FR')} MAD</td>
+          <td style="padding:10px 12px;font-size:12px;font-weight:700;color:#0f172a;text-align:right;border-bottom:1px solid #e2e8f0;">${data.revenue.toLocaleString('fr-FR')} MAD</td>
+          <td style="padding:10px 12px;font-size:12px;color:#64748b;text-align:right;border-bottom:1px solid #e2e8f0;">${data.cost.toLocaleString('fr-FR')} MAD</td>
+          <td style="padding:10px 12px;font-size:12px;font-weight:800;color:${roiColor};text-align:right;border-bottom:1px solid #e2e8f0;">
+            ${data.roi > 0 ? '+' : ''}${data.roi}%
+          </td>
+        </tr>
+      `;
+    }).join("");
+
+    // Build grouped leads by acquisition source
+    const groupedLeadsHtml = Object.values(LeadSource).map(source => {
+      const sourceLeads = filteredLeads.filter(l => l.source === source);
+      if (sourceLeads.length === 0) return "";
+
+      const sortedSourceLeads = [...sourceLeads].sort((a, b) => new Date(b.dateCreation).getTime() - new Date(a.dateCreation).getTime());
+      
+      const rows = sortedSourceLeads.map((l, index) => {
+        const acqDate = new Date(l.dateCreation).toLocaleDateString("fr-FR", {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric'
+        });
+        const scoreColor = l.score >= 70 ? "#10b981" : l.score >= 40 ? "#3b82f6" : "#f59e0b";
+        return `
+          <tr style="background:${index % 2 === 0 ? '#f8fafc' : '#ffffff'};">
+            <td style="padding:8px 12px;font-size:11px;font-weight:600;color:#1e293b;border-bottom:1px solid #e2e8f0;width:35%;">
+              <div>${l.nomProjet || 'Prospect'}</div>
+              <div style="font-size:9px;color:#64748b;font-weight:400;margin-top:2px;">${l.societe || 'Indépendant'} • ${l.prenom} ${l.nom}</div>
+            </td>
+            <td style="padding:8px 12px;font-size:11px;color:#475569;border-bottom:1px solid #e2e8f0;">${acqDate}</td>
+            <td style="padding:8px 12px;font-size:11px;text-align:center;border-bottom:1px solid #e2e8f0;">
+              <span style="color:${scoreColor};font-weight:800;">${l.score}</span>
+            </td>
+            <td style="padding:8px 12px;font-size:11px;font-weight:700;color:#1e293b;text-align:right;border-bottom:1px solid #e2e8f0;">
+              ${l.valeurEstimee.toLocaleString("fr-FR")} MAD
+            </td>
+            <td style="padding:8px 12px;font-size:10px;text-align:center;border-bottom:1px solid #e2e8f0;">
+              <span style="background:#e0f2fe;color:#0369a1;padding:2px 6px;border-radius:4px;font-weight:700;">${l.statut}</span>
+            </td>
+          </tr>
+        `;
+      }).join("");
+
+      return `
+        <div style="margin-top: 15px; margin-bottom: 20px; page-break-inside: avoid;">
+          <div style="font-size: 10px; font-weight: 800; color: #1e3a8a; text-transform: uppercase; margin-bottom: 6px; background: #eff6ff; padding: 4px 8px; border-radius: 4px; display: inline-block; border-left: 2px solid #2563eb;">
+            ${source} — ${sourceLeads.length} prospect(s)
+          </div>
+          <table class="table-source" style="margin-bottom:0;">
+            <thead>
+              <tr>
+                <th style="text-align:left;border-top-left-radius:6px;border-bottom-left-radius:6px;width:35%;">Prospect / Projet</th>
+                <th style="text-align:left;">Date d'Acquisition</th>
+                <th style="text-align:center;">Score IA</th>
+                <th style="text-align:right;">Valeur Estimée</th>
+                <th style="text-align:center;border-top-right-radius:6px;border-bottom-right-radius:6px;">Statut</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rows}
+            </tbody>
+          </table>
+        </div>
+      `;
+    }).join("");
+
+    const reportDate = new Date().toLocaleDateString("fr-FR", {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+
+    const html = `
+      <!DOCTYPE html>
+      <html lang="fr">
+      <head>
+        <meta charset="UTF-8"/>
+        <title>Rapport de Performance Acquisition Marketing</title>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"/>
+        <style>
+          @page { size: A4; margin: 0; }
+          * { box-sizing: border-box; margin: 0; padding: 0; }
+          body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-size: 11px;
+            line-height: 1.5;
+            color: #1e293b;
+            background: #fff;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
+          .page {
+            width: 21cm;
+            padding: 1.5cm;
+            margin: 0 auto;
+            background: #fff;
+          }
+          .container {
+            width: 100%;
+          }
+          .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 15px;
+            margin-bottom: 25px;
+          }
+          .logo-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+          }
+          .logo {
+            width: 32px;
+            height: 32px;
+            background: #2563eb;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-weight: 800;
+            font-size: 14px;
+          }
+          .logo-text {
+            font-size: 16px;
+            font-weight: 900;
+            color: #0f172a;
+          }
+          .logo-sub {
+            font-size: 8px;
+            color: #94a3b8;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+          }
+          .report-meta {
+            text-align: right;
+          }
+          .report-title {
+            font-size: 14px;
+            font-weight: 800;
+            color: #1e3a8a;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+          }
+          .report-date {
+            font-size: 9px;
+            color: #64748b;
+            margin-top: 3px;
+          }
+          .section-title {
+            font-size: 11px;
+            font-weight: 800;
+            color: #1e3a8a;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 10px;
+            border-left: 3px solid #2563eb;
+            padding-left: 8px;
+            margin-top: 20px;
+            page-break-after: avoid;
+            break-after: avoid;
+          }
+          .grid-kpis {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            margin-bottom: 25px;
+          }
+          .kpi-card {
+            border: 1px solid #e2e8f0;
+            background: #f8fafc;
+            border-radius: 8px;
+            padding: 12px;
+            text-align: center;
+          }
+          .kpi-label {
+            font-size: 8px;
+            color: #64748b;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+          }
+          .kpi-value {
+            font-size: 16px;
+            font-weight: 900;
+            color: #0f172a;
+            margin-top: 4px;
+          }
+          .table-source {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 25px;
+          }
+          .table-source th {
+            background: #1e293b;
+            color: #fff;
+            font-weight: 700;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            padding: 10px 12px;
+          }
+          .table-source td {
+            border-bottom: 1px solid #e2e8f0;
+          }
+          .footer {
+            border-top: 1px solid #e2e8f0;
+            padding-top: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 8px;
+            color: #94a3b8;
+            margin-top: 40px;
+            page-break-inside: avoid;
+            break-inside: avoid;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="page">
+          <div class="container">
+            <!-- Header -->
+            <div class="header">
+              <div class="logo-container">
+                <div class="logo">LF</div>
+                <div>
+                  <div class="logo-text">LeadFlow CRM</div>
+                  <div class="logo-sub">Marketing Intelligence</div>
+                </div>
+              </div>
+              <div class="report-meta">
+                <div class="report-title">Audit Acquisition & Performance</div>
+                <div class="report-date">Généré le ${reportDate}</div>
+              </div>
+            </div>
+
+            <!-- KPIs -->
+            <div class="grid-kpis">
+              <div class="kpi-card">
+                <div class="kpi-label">Total Prospects</div>
+                <div class="kpi-value">${totalLeadsCount}</div>
+              </div>
+              <div class="kpi-card">
+                <div class="kpi-label">Score d'Intérêt Moyen</div>
+                <div class="kpi-value">${avgAiScore} / 100</div>
+              </div>
+              <div class="kpi-card">
+                <div class="kpi-label">Pipe Commercial Actif</div>
+                <div class="kpi-value" style="font-size: 13px;">${estimatedSignValue.toLocaleString('fr-FR')} MAD</div>
+              </div>
+              <div class="kpi-card">
+                <div class="kpi-label">Conversion Est. (35%)</div>
+                <div class="kpi-value" style="font-size: 13px; color: #10b981;">${(Math.round(estimatedSignValue * 0.35)).toLocaleString('fr-FR')} MAD</div>
+              </div>
+            </div>
+
+            <!-- Table: Split by Source -->
+            <div class="section-title">Analyse par Canal d'Acquisition (Source)</div>
+            <table class="table-source">
+              <thead>
+                <tr>
+                  <th style="text-align:left;border-top-left-radius:6px;border-bottom-left-radius:6px;">Canal / Source</th>
+                  <th style="text-align:center;">Taux Conv.</th>
+                  <th style="text-align:right;">Pipe Estimé</th>
+                  <th style="text-align:right;">Revenus Gagnés</th>
+                  <th style="text-align:right;">Budget Engagé</th>
+                  <th style="text-align:right;border-top-right-radius:6px;border-bottom-right-radius:6px;">ROI Canal</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${sourceRows}
+              </tbody>
+            </table>
+
+            <!-- Section: Leads split by Acquisition Means -->
+            <div class="section-title">Liste des Prospects Classés par Canal d'Acquisition</div>
+            ${groupedLeadsHtml || '<p style="font-style:italic;color:#64748b;font-size:11px;">Aucun prospect disponible.</p>'}
+          </div>
+
+          <!-- Footer -->
+          <div class="footer">
+            <span>Document confidentiel destiné à l'usage interne de l'équipe Marketing. LeadFlow Intelligence Engine &copy; 2026.</span>
+            <span>Page 1 sur 1</span>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    doc.write(html);
+    doc.close();
+
+    setTimeout(() => {
+      iframe.contentWindow?.focus();
+      iframe.contentWindow?.print();
+      setTimeout(() => document.body.removeChild(iframe), 1500);
+    }, 500);
+  };
+
   return (
     <div className="flex-1 overflow-y-auto p-6 space-y-6 max-h-screen bg-slate-50 dark:bg-slate-950" id="analytics-performance-root">
       <div className="max-w-7xl mx-auto w-full space-y-6">
         
-        {/* Filters */}
-        <div className="flex justify-end">
-          <div className="flex items-center gap-3 bg-white p-2 rounded-xl border border-slate-200 shadow-sm text-xs dark:bg-slate-900 dark:border-slate-800">
+        {/* Filters and Export */}
+        <div className="flex justify-between items-center bg-white p-3 rounded-xl border border-slate-200 shadow-sm dark:bg-slate-900 dark:border-slate-800">
+          <button
+            onClick={handleExportPDF}
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-xs font-bold transition-all shadow-md shadow-blue-500/10 cursor-pointer border-0"
+          >
+            <Printer className="h-4 w-4" />
+            Exporter le Rapport PDF
+          </button>
+          
+          <div className="flex items-center gap-3 text-xs">
             <span className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
               <Sliders className="h-3.5 w-3.5 text-blue-600" /> {t("analytics.segmentBy")}
             </span>
