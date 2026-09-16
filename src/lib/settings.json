@@ -1,6 +1,0 @@
-{
-  "sessionLength": "15m",
-  "emailProvider": "resend",
-  "resendFromEmail": "onboarding@resend.dev",
-  "resendApiKey": "re_ZNvWP1fT_HFhsE2DUaXWDEkUeHdwSSyZU"
-}
